@@ -1,4 +1,4 @@
-> [English](../../README.md) | [中文](../zh-CN/README.md) | [Français](../fr-FR/README.md) | [Español](../es-ES/README.md) | **日本語** | [العربية](../ar-MA/README.md)
+> [English](../../README.md) | [中文](../zh-CN/README.md) | [Français](../fr-FR/README.md) | [Español](../es-ES/README.md) | **日本語** | [한국어](../ko-KR/README.md) | [العربية](../ar-MA/README.md)
 
 <p align="center">
   <img src="../../media/graphics/branding/libernt-banner.png" width="480" alt="LiberNT">
