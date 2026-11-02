@@ -1743,6 +1743,18 @@ Ndis6WdiBuildCandidates(
 }
 
 static
+BOOLEAN
+Ndis6WdiPeerHasField(
+    _In_ PNDIS6_WDI_ADAPTER Wdi,
+    _In_ ULONG WdiVersionAdded,
+    _In_ ULONG WifiCxVersionAdded)
+{
+    if (Wdi->PeerVersion >= WDI_VERSION_2_0_0)
+        return Wdi->PeerVersion >= WifiCxVersionAdded;
+    return Wdi->PeerVersion >= WdiVersionAdded;
+}
+
+static
 VOID
 Ndis6WdiBuildConnectParameters(
     _In_ PNDIS6_WDI_ADAPTER Wdi,
@@ -1767,7 +1779,19 @@ Ndis6WdiBuildConnectParameters(
     Ndis6WdiTlvAppend8(Tlvs, FALSE);
     Ndis6WdiTlvAppend32(Tlvs, RoamReason);
     Ndis6WdiTlvAppend32(Tlvs, RoamTrigger);
-    Ndis6WdiTlvAppend8(Tlvs, Wdi->BssTransitionSupported);
+    if (Ndis6WdiPeerHasField(Wdi, WDI_VERSION_1_0_1, WDI_VERSION_2_0_0))
+        Ndis6WdiTlvAppend8(Tlvs, Wdi->BssTransitionSupported);
+    if (Ndis6WdiPeerHasField(Wdi, MAXULONG, WDI_VERSION_2_0_7))
+        Ndis6WdiTlvAppend8(Tlvs, FALSE);
+    if (Ndis6WdiPeerHasField(Wdi, MAXULONG, WDI_VERSION_2_0_8))
+        Ndis6WdiTlvAppend8(Tlvs, FALSE);
+    if (Ndis6WdiPeerHasField(Wdi, MAXULONG, WDI_VERSION_2_0_10))
+    {
+        Ndis6WdiTlvAppend8(Tlvs, FALSE);
+        Ndis6WdiTlvAppend8(Tlvs, FALSE);
+    }
+    if (Ndis6WdiPeerHasField(Wdi, WDI_VERSION_1_1_13, WDI_VERSION_2_0_14))
+        Ndis6WdiTlvAppend8(Tlvs, FALSE);
     Ndis6WdiTlvClose(Tlvs, Inner);
 
     Ndis6WdiTlvAdd(Tlvs, WDI_TLV_SSID, Ssid->ucSSID, Ssid->uSSIDLength);

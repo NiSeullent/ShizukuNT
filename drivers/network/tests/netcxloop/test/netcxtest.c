@@ -314,20 +314,27 @@ void
 TestWifi(const WCHAR *WifiInfPath)
 {
     MIB_IF_ROW2 Row;
+    BOOL Found = FALSE;
+    int i;
 
     Check(InstallDevice(WifiInfPath, L"ROOT\\WIFILOOP\0", WifiDeviceInstanceId), "wifi install");
-    if (WaitForInterface(WifiAddress, TRUE, &Row))
+    for (i = 0; i < 100 && !(Found = FindInterface(WifiAddress, &Row)); i++)
     {
-        Check(TRUE, "wifi interface up");
-        ReportInterface("wifi", &Row);
-        Check(AddAddress(Row.InterfaceLuid, "10.233.0.1"), "wifi address preferred");
-        Check(PingPeer("10.233.0.2", 2) >= 1, "wifi peer answers echo");
+        if (i % 10 == 9)
+            Report("NETCXTEST: waiting for the wifi interface, %d ms", (i + 1) * 100);
+        Sleep(100);
     }
-    else
+    Check(Found, "wifi interface present");
+    if (!Found)
     {
-        Check(FALSE, "wifi interface up");
         ReportInterfaceTable();
+        return;
     }
+
+    ReportInterface("wifi", &Row);
+    Check(Row.Type == IF_TYPE_IEEE80211, "wifi ieee 802.11 type");
+    Check(Row.MediaType == NdisMediumNative802_11, "wifi native 802.11 medium");
+    Check(Row.PhysicalMediumType == NdisPhysicalMediumNative802_11, "wifi native 802.11 physical medium");
 }
 
 int

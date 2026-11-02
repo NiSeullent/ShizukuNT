@@ -1377,7 +1377,7 @@ Ndis6WdiSetAdapterConfiguration(
 
     Ndis6WdiTlvInit(&Tlvs);
     Ndis6WdiTlvAdd(&Tlvs, WDI_TLV_LINK_QUALITY_BAR_MAP, BarMap, sizeof(BarMap));
-    if (Wdi->Wdi->WdiVersion >= WDI_VERSION_1_0_10)
+    if (Wdi->PeerVersion >= WDI_VERSION_1_0_10)
         Ndis6WdiTlvAdd(&Tlvs, WDI_TLV_PLDR_SUPPORT, &PldrSupport, sizeof(PldrSupport));
     Status = Ndis6WdiProperty(Wdi, WDI_SET_ADAPTER_CONFIGURATION, WDI_PORT_ID_ADAPTER, &Tlvs, NULL, NULL);
     Ndis6WdiTlvFree(&Tlvs);
@@ -1572,6 +1572,7 @@ Ndis6WdiMiniportInitializeEx(
     Wdi->DriverBlock = Ext->DriverBlock;
     Wdi->Wdi = &Ext->DriverBlock->WdiCharacteristics;
     Wdi->Ihv = &Ext->DriverBlock->WdiMiniportCharacteristics;
+    Wdi->PeerVersion = min(Wdi->Wdi->WdiVersion, WDI_VERSION_LATEST);
     Wdi->PortId = WDI_PORT_ID_ADAPTER;
     Status = Ndis6WdiStartCore(Wdi);
     if (Status != NDIS_STATUS_SUCCESS)
@@ -1580,7 +1581,7 @@ Ndis6WdiMiniportInitializeEx(
     Wdi->InitParameters.Header.Type = NDIS_OBJECT_TYPE_WDI_INIT_PARAMETERS;
     Wdi->InitParameters.Header.Revision = NDIS_OBJECT_TYPE_WDI_INIT_PARAMETERS_REVISION_1;
     Wdi->InitParameters.Header.Size = NDIS_SIZEOF_WDI_INIT_PARAMETERS_REVISION_1;
-    Wdi->InitParameters.WdiVersion = Wdi->Wdi->WdiVersion;
+    Wdi->InitParameters.WdiVersion = Wdi->PeerVersion;
     Wdi->InitParameters.OpenAdapterCompleteHandler = Ndis6WdiOpenAdapterComplete;
     Wdi->InitParameters.CloseAdapterCompleteHandler = Ndis6WdiCloseAdapterComplete;
     Wdi->InitParameters.UeIdleNotificationConfirm = Ndis6WdiIdleNotificationConfirm;
@@ -1596,7 +1597,7 @@ Ndis6WdiMiniportInitializeEx(
                                               MiniportInitParameters,
                                               &Wdi->InitParameters,
                                               &Registration);
-    DbgPrint("WDI: allocate adapter 0x%08lx (version 0x%lx)\n", Status, Wdi->Wdi->WdiVersion);
+    DbgPrint("WDI: allocate adapter 0x%08lx (version 0x%lx, peer 0x%lx)\n", Status, Wdi->Wdi->WdiVersion, Wdi->PeerVersion);
     if (Status != NDIS_STATUS_SUCCESS)
         goto Fail;
 
@@ -1890,11 +1891,8 @@ NdisMRegisterWdiMiniportDriver(
         return NDIS_STATUS_BAD_CHARACTERISTICS;
     }
 
-    if (WdiCharacteristics->WdiVersion < WDI_VERSION_1_0 ||
-        WdiCharacteristics->WdiVersion > WDI_VERSION_LATEST)
-    {
+    if ((WdiCharacteristics->WdiVersion >> 16) != (WDI_VERSION_LATEST >> 16))
         return NDIS_STATUS_BAD_VERSION;
-    }
 
     if (WdiCharacteristics->AllocateAdapterHandler == NULL ||
         WdiCharacteristics->FreeAdapterHandler == NULL ||
@@ -2013,6 +2011,7 @@ NdisWdiEngineCreate(
     Wdi->Signature = NDIS6_WDI_SIGNATURE;
     Wdi->Adapter = Adapter;
     Wdi->EngineWdi.WdiVersion = Transport->WdiVersion;
+    Wdi->PeerVersion = Transport->WdiVersion;
     Wdi->EngineIhv.OidRequestHandler = Transport->SendCommand;
     Wdi->Wdi = &Wdi->EngineWdi;
     Wdi->Ihv = &Wdi->EngineIhv;
