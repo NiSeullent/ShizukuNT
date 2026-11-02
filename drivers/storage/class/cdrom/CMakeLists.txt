@@ -1,4 +1,5 @@
 
+include(${REACTOS_SOURCE_DIR}/sdk/lib/drivers/permissive/permissive.cmake)
 remove_definitions(-D_WIN32_WINNT=${REACTOS_TARGET_NT} -DWINVER=${REACTOS_TARGET_NT})
 
 list(APPEND SOURCE
@@ -18,7 +19,7 @@ list(APPEND SOURCE
     cdrom.h)
 
 add_library(cdrom MODULE ${SOURCE} cdrom.rc)
-set_module_type(cdrom kmdfdriver)
+set_module_type(cdrom wdmdriver ENTRYPOINT FxDriverEntry 8)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
     target_compile_options(cdrom PRIVATE -Wno-unused-variable -Wno-pointer-sign)
@@ -34,8 +35,9 @@ target_compile_options(cdrom PRIVATE
     -U_WIN32_WINNT -D_WIN32_WINNT=0x603
     -UNTDDI_VERSION -DNTDDI_VERSION=0x06030000)
 
-target_link_libraries(cdrom ntoskrnl_vista libcntpr ${PSEH_LIB})
+target_link_libraries(cdrom kmdfstub ${PSEH_LIB})
 add_importlibs(cdrom wdfldr ntoskrnl hal)
+set_module_permissive_runtime(cdrom)
 # add_pch(cdrom cdrom.h SOURCE)
 add_cd_file(TARGET cdrom DESTINATION reactos/system32/drivers NO_CAB FOR all)
 add_registry_inf(cdrom_reg.inf)

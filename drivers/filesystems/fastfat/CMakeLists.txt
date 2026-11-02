@@ -1,3 +1,5 @@
+include(${REACTOS_SOURCE_DIR}/sdk/lib/drivers/permissive/permissive.cmake)
+
 list(APPEND SOURCE
     acchksup.c
     allocsup.c
@@ -37,11 +39,12 @@ list(APPEND SOURCE
 
 add_library(fastfat MODULE ${SOURCE} fastfat.rc)
 set_module_type(fastfat kernelmodedriver)
-target_link_libraries(fastfat ${PSEH_LIB} memcmp)
+target_link_libraries(fastfat ${PSEH_LIB})
 add_importlibs(fastfat ntoskrnl hal)
+set_module_permissive_runtime(fastfat)
 add_pch(fastfat fatprocs.h SOURCE)
 add_cd_file(TARGET fastfat DESTINATION reactos/system32/drivers NO_CAB FOR all)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(fastfat PRIVATE -Wno-unused-value)
+    target_compile_options(fastfat PRIVATE -Wno-unused-value -Wno-deprecated-declarations)
 endif()
