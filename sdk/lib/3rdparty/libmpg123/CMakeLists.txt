@@ -1,9 +1,8 @@
 
 add_definitions(
-    -DOPT_I386
+    -DOPT_GENERIC
     -DREAL_IS_FLOAT
-    -DNOXFERMEM
-    -DHAVE_CONFIG_H
+    -DNO_CATCHSIGNAL
     -DEOVERFLOW=75
     -Dstrcasecmp=_stricmp
     -Dstrncasecmp=_strnicmp
@@ -13,39 +12,33 @@ add_definitions(
 include_directories(BEFORE ${REACTOS_SOURCE_DIR}/sdk/include/reactos/libs/libmpg123)
 
 list(APPEND SOURCE
-    compat/compat.c
-    compat/compat_str.c
-    dct64.c
-    dct64_i386.c
-    equalizer.c
-    feature.c
-    format.c
-    frame.c
-    icy.c
-    icy2utf8.c
-    id3.c
-    index.c
-    layer1.c
-    layer2.c
-    layer3.c
-    libmpg123.c
-    ntom.c
-    parse.c
-    readers.c
-    stringbuf.c
-    synth.c
-    synth_8bit.c
-    synth_real.c
-    synth_s32.c
-    tabinit.c)
+    src/compat/compat.c
+    src/compat/compat_str.c
+    src/libmpg123/dct64.c
+    src/libmpg123/equalizer.c
+    src/libmpg123/feature.c
+    src/libmpg123/format.c
+    src/libmpg123/frame.c
+    src/libmpg123/icy.c
+    src/libmpg123/icy2utf8.c
+    src/libmpg123/id3.c
+    src/libmpg123/index.c
+    src/libmpg123/layer1.c
+    src/libmpg123/layer2.c
+    src/libmpg123/layer3.c
+    src/libmpg123/lfs_wrap.c
+    src/libmpg123/libmpg123.c
+    src/libmpg123/ntom.c
+    src/libmpg123/optimize.c
+    src/libmpg123/parse.c
+    src/libmpg123/readers.c
+    src/libmpg123/stringbuf.c
+    src/libmpg123/synth.c
+    src/libmpg123/synth_8bit.c
+    src/libmpg123/synth_real.c
+    src/libmpg123/synth_s32.c
+    src/libmpg123/tabinit.c)
 
-list(APPEND PCH_SKIP_SOURCE
-    optimize.c)
-
-add_library(libmpg123
-    ${SOURCE}
-    ${PCH_SKIP_SOURCE})
-
+add_library(libmpg123 ${SOURCE})
 target_link_libraries(libmpg123 oldnames)
 add_dependencies(libmpg123 psdk)
-add_pch(libmpg123 precomp.h "${PCH_SKIP_SOURCE}")

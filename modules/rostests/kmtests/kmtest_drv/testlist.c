@@ -249,6 +249,7 @@ KMT_TESTFUNC Test_ZwSystemInfoKM;
 KMT_TESTFUNC Test_KeQueue;
 KMT_TESTFUNC Test_KeSemaphore;
 KMT_TESTFUNC Test_KeProcessStackCount;
+KMT_TESTFUNC Test_KeQueryBasePriority;
 KMT_TESTFUNC Test_KeProcessor;
 KMT_TESTFUNC Test_KeSpinLock;
 KMT_TESTFUNC Test_KeThreadedDpc;
@@ -274,6 +275,7 @@ KMT_TESTFUNC Test_NdisIfProvider;
 KMT_TESTFUNC Test_NdisRwLock;
 KMT_TESTFUNC Test_NdisProcessorGroup;
 KMT_TESTFUNC Test_NdisLegacyHelpers;
+KMT_TESTFUNC Test_NdisWdiVersion;
 KMT_TESTFUNC Test_NpfsConnect;
 KMT_TESTFUNC Test_NpfsCreate;
 KMT_TESTFUNC Test_NpfsFileInfo;
@@ -317,6 +319,7 @@ KMT_TESTFUNC Test_IoStackKM;
 KMT_TESTFUNC Test_IoActivityId;
 KMT_TESTFUNC Test_IoAcpiCmosRegion;
 KMT_TESTFUNC Test_IoAcpiIoctl;
+KMT_TESTFUNC Test_IoErrorLogEntry;
 KMT_TESTFUNC Test_IoPciPdoPnp;
 KMT_TESTFUNC Test_IoPciD3Cold;
 KMT_TESTFUNC Test_IoPciExpressInterfaces;
@@ -496,6 +499,7 @@ const KMT_TEST TestList[] =
     { "IoActivityId",                       Test_IoActivityId },
     { "IoAcpiCmosRegion",                   Test_IoAcpiCmosRegion },
     { "IoAcpiIoctl",                        Test_IoAcpiIoctl },
+    { "IoErrorLogEntry",                    Test_IoErrorLogEntry },
     { "IoPciPdoPnp",                        Test_IoPciPdoPnp },
     { "IoPciD3Cold",                        Test_IoPciD3Cold },
     { "IoPciExpressInterfaces",             Test_IoPciExpressInterfaces },
@@ -556,6 +560,7 @@ const KMT_TEST TestList[] =
     { "KePcr",                              Test_KePcr },
     { "KeQueue",                            Test_KeQueue },
     { "KeProcessStackCount",                Test_KeProcessStackCount },
+    { "KeQueryBasePriority",                Test_KeQueryBasePriority },
     { "KeProcessor",                        Test_KeProcessor },
     { "KeSemaphore",                        Test_KeSemaphore },
     { "KeSpinLock",                         Test_KeSpinLock },
@@ -587,6 +592,7 @@ const KMT_TEST TestList[] =
     { "NdisRwLock",                         Test_NdisRwLock },
     { "NdisProcessorGroup",                 Test_NdisProcessorGroup },
     { "NdisLegacyHelpers",                  Test_NdisLegacyHelpers },
+    { "NdisWdiVersion",                     Test_NdisWdiVersion },
     { "NpfsConnect",                        Test_NpfsConnect },
     { "NpfsCreate",                         Test_NpfsCreate },
     { "NpfsFileInfo",                       Test_NpfsFileInfo },

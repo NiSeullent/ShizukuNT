@@ -10,6 +10,8 @@
 
 #define WPP_RECORDER_LOG_TAG 'LppW'
 
+/* TODO: in-memory inflight trace recorder buffers; messages are not recorded */
+
 VOID
 NTAPI
 WppAutoLogStart(
@@ -114,6 +116,18 @@ imp_WppRecorderLogDelete(
     ExFreePoolWithTag(Log, WPP_RECORDER_LOG_TAG);
 }
 
+VOID
+NTAPI
+imp_WppRecorderLogSetIdentifier(
+    _In_ PVOID WppCb,
+    _In_ PVOID RecorderLog,
+    _In_ PCSTR LogIdentifier)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+    UNREFERENCED_PARAMETER(RecorderLog);
+    UNREFERENCED_PARAMETER(LogIdentifier);
+}
+
 PVOID
 NTAPI
 imp_WppRecorderLogGetDefault(
@@ -130,6 +144,82 @@ imp_WppRecorderIsDefaultLogAvailable(
 {
     UNREFERENCED_PARAMETER(WppCb);
     return FALSE;
+}
+
+PVOID
+NTAPI
+imp_WppRecorderGetCounterHandle(
+    _In_ PVOID WppCb)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+    return NULL;
+}
+
+NTSTATUS
+NTAPI
+imp_WppRecorderLinkCounters(
+    _In_ PVOID WppCb,
+    _In_opt_ PVOID CounterOwner)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+    UNREFERENCED_PARAMETER(CounterOwner);
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+NTAPI
+imp_WppRecorderGetTriageInfo(
+    _In_ PVOID WppCb,
+    _Out_ PVOID WppTriageInfo)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+
+    if (WppTriageInfo == NULL)
+        return STATUS_INVALID_PARAMETER;
+
+    return STATUS_NOT_SUPPORTED;
+}
+
+static
+NTSTATUS
+WppRecorderNoLiveData(
+    _Out_ PVOID *OutBuffer,
+    _Out_ PULONG OutBufferLength,
+    _Out_ LPGUID Guid)
+{
+    if (OutBuffer == NULL || OutBufferLength == NULL || Guid == NULL)
+        return STATUS_INVALID_PARAMETER;
+
+    *OutBuffer = NULL;
+    *OutBufferLength = 0;
+    RtlZeroMemory(Guid, sizeof(*Guid));
+    return STATUS_NOT_SUPPORTED;
+}
+
+NTSTATUS
+NTAPI
+imp_WppRecorderDumpLiveDriverData(
+    _In_ PVOID WppCb,
+    _Out_ PVOID *OutBuffer,
+    _Out_ PULONG OutBufferLength,
+    _Out_ LPGUID Guid)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+    return WppRecorderNoLiveData(OutBuffer, OutBufferLength, Guid);
+}
+
+NTSTATUS
+NTAPI
+imp_WppRecorderLogDumpLiveData(
+    _In_ PVOID WppCb,
+    _In_opt_ PVOID RecorderLog,
+    _Out_ PVOID *OutBuffer,
+    _Out_ PULONG OutBufferLength,
+    _Out_ LPGUID Guid)
+{
+    UNREFERENCED_PARAMETER(WppCb);
+    UNREFERENCED_PARAMETER(RecorderLog);
+    return WppRecorderNoLiveData(OutBuffer, OutBufferLength, Guid);
 }
 
 NTSTATUS

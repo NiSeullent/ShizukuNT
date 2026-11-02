@@ -7,7 +7,7 @@
 @ cdecl TIFFGetFieldDefaulted(ptr long long long)
 @ cdecl TIFFIsByteSwapped(ptr)
 @ cdecl TIFFNumberOfDirectories(ptr)
-@ cdecl TIFFReadEncodedStrip(ptr)
+@ cdecl TIFFReadEncodedStrip(ptr long ptr long)
 @ cdecl TIFFReadEncodedTile(ptr long ptr long)
 @ cdecl TIFFSetDirectory(ptr long)
 @ cdecl TIFFSetErrorHandler(ptr)

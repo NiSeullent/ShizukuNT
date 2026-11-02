@@ -10,10 +10,6 @@
 #define NDEBUG
 #include <debug.h>
 
-#if defined(_M_ARM64)
-
-VOID NTAPI LdrpGuardCheckIcall(VOID);
-VOID NTAPI LdrpGuardDispatchIcall(VOID);
 extern PLDR_DATA_TABLE_ENTRY LdrpImageEntry;
 
 static BOOLEAN LdrpGuardEnabled;
@@ -32,7 +28,33 @@ LdrpGuardAddressInImage(
            Size <= LdrEntry->SizeOfImage - (Address - Base);
 }
 
+static PIMAGE_LOAD_CONFIG_DIRECTORY
+LdrpGuardGetLoadConfig(
+    _In_ PLDR_DATA_TABLE_ENTRY LdrEntry,
+    _In_ PIMAGE_NT_HEADERS NtHeaders,
+    _Out_ PULONG ConfigSize)
+{
+    PIMAGE_LOAD_CONFIG_DIRECTORY LoadConfig;
 
+    *ConfigSize = 0;
+    if (NtHeaders->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC)
+        return NULL;
+
+    LoadConfig = RtlImageDirectoryEntryToData(LdrEntry->DllBase, TRUE, IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG, ConfigSize);
+    if (LoadConfig == NULL)
+        return NULL;
+
+    /* PE32 images may keep the 64-byte directory size Windows XP requires and give the real size in the structure. */
+    if (NtHeaders->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC &&
+        *ConfigSize == 64 &&
+        LoadConfig->Size > *ConfigSize &&
+        LdrpGuardAddressInImage((ULONG_PTR)LoadConfig, LdrEntry, LoadConfig->Size))
+    {
+        *ConfigSize = LoadConfig->Size;
+    }
+
+    return LoadConfig;
+}
 
 #define LDRP_GUARD_CACHE_SLOTS 16
 #define LDRP_GUARD_CACHE_RANGES 4
@@ -46,6 +68,8 @@ typedef struct _LDRP_GUARD_MODULE_INFO
     ULONG RangeCount;
     ULONG_PTR RangeStart[LDRP_GUARD_CACHE_RANGES];
     ULONG_PTR RangeEnd[LDRP_GUARD_CACHE_RANGES];
+    PIMAGE_SECTION_HEADER SectionTable;
+    ULONG SectionCount;
     BOOLEAN Enforced;
     BOOLEAN Usable;
     ULONG_PTR GuardTable;
@@ -123,6 +147,8 @@ LdrpGuardPublishCachedModule(
     Slot->RangeCount = Info->RangeCount;
     RtlCopyMemory(Slot->RangeStart, Info->RangeStart, sizeof(Slot->RangeStart));
     RtlCopyMemory(Slot->RangeEnd, Info->RangeEnd, sizeof(Slot->RangeEnd));
+    Slot->SectionTable = Info->SectionTable;
+    Slot->SectionCount = Info->SectionCount;
     Slot->Enforced = Info->Enforced;
     Slot->Usable = Info->Usable;
     Slot->GuardTable = Info->GuardTable;
@@ -162,7 +188,12 @@ LdrpGuardDescribeModule(
             continue;
 
         if (Info->RangeCount == LDRP_GUARD_CACHE_RANGES)
-            return FALSE;
+        {
+            Info->RangeCount = 0;
+            Info->SectionTable = IMAGE_FIRST_SECTION(NtHeaders);
+            Info->SectionCount = NtHeaders->FileHeader.NumberOfSections;
+            break;
+        }
 
         SectionSize = max(Section->Misc.VirtualSize, Section->SizeOfRawData);
         Info->RangeStart[Info->RangeCount] = Info->ImageBase + Section->VirtualAddress;
@@ -170,7 +201,7 @@ LdrpGuardDescribeModule(
         Info->RangeCount++;
     }
 
-    LoadConfig = RtlImageDirectoryEntryToData(LdrEntry->DllBase, TRUE, IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG, &ConfigSize);
+    LoadConfig = LdrpGuardGetLoadConfig(LdrEntry, NtHeaders, &ConfigSize);
     if (!(NtHeaders->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_GUARD_CF) ||
         LoadConfig == NULL ||
         ConfigSize < RTL_SIZEOF_THROUGH_FIELD(IMAGE_LOAD_CONFIG_DIRECTORY, GuardFlags) ||
@@ -207,6 +238,35 @@ LdrpGuardDescribeModule(
 }
 
 static BOOLEAN
+LdrpGuardTargetIsExecutable(
+    _In_ ULONG_PTR Target,
+    _In_ PLDRP_GUARD_MODULE_INFO Info)
+{
+    PIMAGE_SECTION_HEADER Section = Info->SectionTable;
+    ULONG Index;
+
+    for (Index = 0; Index < Info->RangeCount; ++Index)
+    {
+        if (Target >= Info->RangeStart[Index] && Target < Info->RangeEnd[Index])
+            return TRUE;
+    }
+
+    for (Index = 0; Index < Info->SectionCount; ++Index, ++Section)
+    {
+        ULONG_PTR SectionStart = Info->ImageBase + Section->VirtualAddress;
+
+        if ((Section->Characteristics & IMAGE_SCN_MEM_EXECUTE) &&
+            Target >= SectionStart &&
+            Target - SectionStart < max(Section->Misc.VirtualSize, Section->SizeOfRawData))
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+static BOOLEAN
 LdrpGuardEvaluateCached(
     _In_ ULONG_PTR Target,
     _In_ PLDRP_GUARD_MODULE_INFO Info)
@@ -214,19 +274,8 @@ LdrpGuardEvaluateCached(
     const BYTE *Table;
     ULONGLONG Low, High;
     ULONG TargetRva;
-    ULONG Index;
-    BOOLEAN Executable = FALSE;
 
-    for (Index = 0; Index < Info->RangeCount; ++Index)
-    {
-        if (Target >= Info->RangeStart[Index] && Target < Info->RangeEnd[Index])
-        {
-            Executable = TRUE;
-            break;
-        }
-    }
-
-    if (!Executable)
+    if (!LdrpGuardTargetIsExecutable(Target, Info))
         return FALSE;
 
     if (!Info->Enforced)
@@ -273,9 +322,6 @@ LdrpValidateUserCallTarget(
     PLIST_ENTRY ListHead, NextEntry;
     PPEB Peb;
 
-    if (((ULONG_PTR)Target & (sizeof(ULONG) - 1)) != 0)
-        return FALSE;
-
     Peb = NtCurrentPeb();
     if (Peb->Ldr == NULL)
         return FALSE;
@@ -307,31 +353,29 @@ NTAPI
 LdrpInitializeGuard(
     _In_ PLDR_DATA_TABLE_ENTRY LdrEntry)
 {
-    PIMAGE_LOAD_CONFIG_DIRECTORY LoadConfig;
+    PIMAGE_LOAD_CONFIG_DIRECTORY LoadConfig = NULL;
     PIMAGE_NT_HEADERS NtHeaders;
     PVOID *CheckSlot, *DispatchSlot;
+    PVOID CheckTarget, DispatchTarget;
     PVOID ProtectBase;
     SIZE_T ProtectSize;
-    ULONG ConfigSize;
+    ULONG ConfigSize = 0;
     ULONG OldProtection, IgnoredProtection;
     NTSTATUS Status;
     BOOLEAN GuardImage;
 
     NtHeaders = RtlImageNtHeader(LdrEntry->DllBase);
-    LoadConfig = RtlImageDirectoryEntryToData(LdrEntry->DllBase, TRUE, IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG, &ConfigSize);
-    GuardImage = NtHeaders != NULL &&
-                 NtHeaders->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR_MAGIC &&
+    if (NtHeaders != NULL)
+        LoadConfig = LdrpGuardGetLoadConfig(LdrEntry, NtHeaders, &ConfigSize);
+    GuardImage = LoadConfig != NULL &&
                  (NtHeaders->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_GUARD_CF) != 0 &&
-                 LoadConfig != NULL &&
                  ConfigSize >= RTL_SIZEOF_THROUGH_FIELD(IMAGE_LOAD_CONFIG_DIRECTORY, GuardFlags) &&
                  (LoadConfig->GuardFlags & IMAGE_GUARD_CF_INSTRUMENTED) != 0;
     if (LdrEntry == LdrpImageEntry)
     {
-        PIMAGE_NT_HEADERS ImageHeaders = RtlImageNtHeader(LdrEntry->DllBase);
-
         LdrpGuardEnabled = GuardImage;
-        LdrpGuardBypass = ImageHeaders != NULL &&
-                          ImageHeaders->FileHeader.Machine != IMAGE_FILE_MACHINE_ARM64;
+        LdrpGuardBypass = NtHeaders != NULL &&
+                          NtHeaders->FileHeader.Machine != IMAGE_FILE_MACHINE_NATIVE;
     }
 
     /* Native ARM64 leaves image-local thunks intact in a non-CFG process. */
@@ -341,15 +385,20 @@ LdrpInitializeGuard(
     if (LdrpGuardBypass)
         return STATUS_SUCCESS;
 
+    if (!LdrpArchGetGuardTargets(&CheckTarget, &DispatchTarget))
+        return STATUS_SUCCESS;
+
     if (ConfigSize < RTL_SIZEOF_THROUGH_FIELD(IMAGE_LOAD_CONFIG_DIRECTORY, GuardCFDispatchFunctionPointer) ||
-        LoadConfig->GuardCFCheckFunctionPointer == 0 ||
-        LoadConfig->GuardCFDispatchFunctionPointer == 0)
+        LoadConfig->GuardCFCheckFunctionPointer == 0)
     {
         return STATUS_INVALID_IMAGE_FORMAT;
     }
 
+    if (LoadConfig->GuardCFDispatchFunctionPointer == 0)
+        DispatchTarget = NULL;
+
     CheckSlot = (PVOID *)(ULONG_PTR)LoadConfig->GuardCFCheckFunctionPointer;
-    DispatchSlot = (PVOID *)(ULONG_PTR)LoadConfig->GuardCFDispatchFunctionPointer;
+    DispatchSlot = DispatchTarget != NULL ? (PVOID *)(ULONG_PTR)LoadConfig->GuardCFDispatchFunctionPointer : CheckSlot;
     if (!LdrpGuardAddressInImage((ULONG_PTR)CheckSlot, LdrEntry, sizeof(*CheckSlot)) ||
         !LdrpGuardAddressInImage((ULONG_PTR)DispatchSlot, LdrEntry, sizeof(*DispatchSlot)))
     {
@@ -362,49 +411,10 @@ LdrpInitializeGuard(
     if (!NT_SUCCESS(Status))
         return Status;
 
-    InterlockedExchangePointer((PVOID volatile *)CheckSlot, LdrpGuardCheckIcall);
-    InterlockedExchangePointer((PVOID volatile *)DispatchSlot, LdrpGuardDispatchIcall);
+    InterlockedExchangePointer((PVOID volatile *)CheckSlot, CheckTarget);
+    if (DispatchTarget != NULL)
+        InterlockedExchangePointer((PVOID volatile *)DispatchSlot, DispatchTarget);
 
     Status = NtProtectVirtualMemory(NtCurrentProcess(), &ProtectBase, &ProtectSize, OldProtection, &IgnoredProtection);
     return Status;
 }
-
-#else
-
-NTSTATUS NTAPI RtlRegisterCfgTargetRange(_In_ PVOID Base, _In_ SIZE_T Size)
-{
-    UNREFERENCED_PARAMETER(Base);
-    UNREFERENCED_PARAMETER(Size);
-    return STATUS_NOT_SUPPORTED;
-}
-
-VOID NTAPI RtlUnregisterCfgTargetRange(_In_ PVOID Base)
-{
-    UNREFERENCED_PARAMETER(Base);
-}
-
-NTSTATUS NTAPI RtlSetCfgTargetValidity(_In_ PVOID Base, _In_ SIZE_T Size, _In_ ULONG Count, _Inout_updates_(Count) PVOID Targets)
-{
-    UNREFERENCED_PARAMETER(Base);
-    UNREFERENCED_PARAMETER(Size);
-    UNREFERENCED_PARAMETER(Count);
-    UNREFERENCED_PARAMETER(Targets);
-    return STATUS_NOT_SUPPORTED;
-}
-
-NTSTATUS
-NTAPI
-LdrpInitializeGuard(
-    _In_ PLDR_DATA_TABLE_ENTRY LdrEntry)
-{
-    UNREFERENCED_PARAMETER(LdrEntry);
-    return STATUS_SUCCESS;
-}
-
-VOID
-NTAPI
-LdrpGuardInvalidateModuleCache(VOID)
-{
-}
-
-#endif

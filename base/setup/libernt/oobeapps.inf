@@ -24,6 +24,9 @@ WineGecko.x86
 Chrome.arm64
 Firefox.arm64
 
+[Apps.riscv64]
+LLVMpipe.riscv64
+
 [Apps.x86]
 VCRedist.x86
 WineMono.x86
@@ -87,6 +90,16 @@ Sha256 = "a29ec7b37d9ed534251285951c56f2ccbfcfea11a61629840a6a364b931e5229"
 Detect = "%11%\mesa_llvmpipe.dll"
 Unattended = yes
 
+[LLVMpipe.riscv64]
+Name = "LLVMpipe and Lavapipe software OpenGL and Vulkan (RISC-V64)"
+Url = "https://github.com/LiberNT/LiberNT/releases/download/mesa-llvmpipe-26.2.2-1/libernt-mesa-llvmpipe-26.2.2-1-riscv64.msi"
+File = "libernt-mesa-llvmpipe-26.2.2-1-riscv64.msi"
+Type = "msi"
+Space = 150
+Sha256 = "c1ade2e09945a70ab7a5421c7cf829a668fd630f922e3cefa6688181f2ba9406"
+Detect = "%11%\mesa_llvmpipe.dll"
+Unattended = yes
+
 [VCRedist.arm64]
 Name = "Microsoft Visual C++ Redistributable (ARM64)"
 Url = "https://aka.ms/vc14/vc_redist.arm64.exe"
@@ -96,6 +109,7 @@ Space = 41
 Arguments = "/install /quiet /norestart"
 Signer = "Microsoft Corporation"
 
+; FIXME: the Wine Mono MSIs write NDP\v4\Full Release 533320 (Windows 11 22H2/23H2), not 533325 (build 26100)
 [WineMono.x86]
 Name = "Wine Mono 11.3.0 (.NET Framework)"
 Url = "https://dl.winehq.org/wine/wine-mono/11.3.0/wine-mono-11.3.0-x86.msi"

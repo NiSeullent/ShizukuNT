@@ -1161,6 +1161,25 @@ HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","SimSun",0x0
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","NSimSun",0x00000000,"Noto Sans SC"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Microsoft YaHei",0x00000000,"Noto Sans SC"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Microsoft YaHei UI",0x00000000,"Noto Sans SC"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Malgun Gothic",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Malgun Gothic Semilight",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Gulim",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","GulimChe",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Dotum",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","DotumChe",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Batang",0x00000000,"Noto Serif KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","BatangChe",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","Gungsuh",0x00000000,"Noto Serif KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","GungsuhChe",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","맑은 고딕",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","굴림",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","굴림체",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","돋움",0x00000000,"Noto Sans KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","돋움체",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","바탕",0x00000000,"Noto Serif KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","바탕체",0x00000000,"D2Coding"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","궁서",0x00000000,"Noto Serif KR"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes","궁서체",0x00000000,"D2Coding"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontDPI","LogPixels",0x00010003,96
 
 ; FontLink
@@ -1173,19 +1192,19 @@ HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink",,0x00000
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","Tahoma",0x00010000,\
 	"msgothic.ttc,MS UI Gothic",\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,Gulim",\
+	"NotoSansKR-Regular.otf,Noto Sans KR",\
 	"mingliu.ttc,PMingLiU"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","Microsoft Sans Serif",0x00010000,\
 	"msgothic.ttc,MS UI Gothic",\
 	"mingliu.ttc,PMingLiU",\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,Gulim",\
+	"NotoSansKR-Regular.otf,Noto Sans KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","Lucida Sans Unicode",0x00010000,\
 	"msgothic.ttc,MS UI Gothic",\
 	"mingliu.ttc,PMingLiU",\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,Gulim",\
+	"NotoSansKR-Regular.otf,Noto Sans KR",\
 	"tahoma.ttf,Tahoma"
 
 ; FontLink (Chinese to others)
@@ -1193,50 +1212,50 @@ HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MingLiU
 	"micross.ttf,Microsoft Sans Serif",\
 	"simsun.ttc,SimSun",\
 	"msmincho.ttc,MS Mincho",\
-	"batang.ttc,BatangChe",\
+	"D2Coding-Regular.ttf,D2Coding",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","SimSun",0x00010000,\
 	"micross.ttf,Microsoft Sans Serif",\
 	"mingliu.ttc,PMingLiU",\
 	"msmincho.ttc,MS PMincho",\
-	"batang.ttc,Batang",\
+	"NotoSerifKR-Regular.otf,Noto Serif KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","PMingLiU",0x00010000,\
 	"micross.ttf,Microsoft Sans Serif",\
 	"simsun.ttc,SimSun",\
 	"msmincho.ttc,MS PMincho",\
-	"BATANG.TTC,Batang",\
+	"NotoSerifKR-Regular.otf,Noto Serif KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","NSimSun",0x00010000,\
 	"mingliu.ttc,PMingLiU",\
 	"msmincho.ttc,MS Mincho",\
-	"batang.ttc,BatangChe",\
+	"D2Coding-Regular.ttf,D2Coding",\
 	"tahoma.ttf,Tahoma"
 
 ; FontLink (Japanese to others)
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MS Gothic",0x00010000,\
 	"mingliu.ttc,MingLiU",\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,GulimChe",\
+	"D2Coding-Regular.ttf,D2Coding",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MS Mincho",0x00010000,\
 	"mingliu.ttc,MingLiU",\
 	"simsun.ttc,SimSun",\
-	"batang.ttc,Batang",\
+	"NotoSerifKR-Regular.otf,Noto Serif KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MS PGothic",0x00010000,\
 	"mingliu.ttc,PMingLiU",\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,Gulim",\
+	"NotoSansKR-Regular.otf,Noto Sans KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MS PMincho",0x00010000,\
 	"mingliu.ttc,PMingLiU",\
 	"simsun.ttc,SimSun",\
-	"batang.ttc,Batang",\
+	"NotoSerifKR-Regular.otf,Noto Serif KR",\
 	"tahoma.ttf,Tahoma"
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink","MS UI Gothic",0x00010000,\
 	"simsun.ttc,SimSun",\
-	"gulim.ttc,Gulim",\
+	"NotoSansKR-Regular.otf,Noto Sans KR",\
 	"mingliu.ttc,PMingLiU",\
 	"tahoma.ttf,Tahoma"
 

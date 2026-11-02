@@ -88,8 +88,8 @@ cmsBool GrowMLUpool(cmsMLU* mlu)
 }
 
 // Grows a entry table for a MLU. Each time this function is called, table size is multiplied times two.
-// No need to check integer overflow since that is 2*16*count = 2^32-1 ; => count = 128 M entries,
-// That would be 2Gb, which is over MAX_MEMORY_FOR_ALLOC, even for large file size.
+// No need to check integer overflow since that is 2*16*count = 2^32-1 ; => count = 128 M entries, 
+// That would be 2Gb, which is over MAX_MEMORY_FOR_ALLOC, even for large file size. 
 // I added this check to silence the continuous spam reports of people using AI to catch what
 // they think are "vulnerabilities".
 static
@@ -213,8 +213,8 @@ void strFrom16(char str[3], cmsUInt16Number n)
 // Convert from UTF8 to wchar, returns len.
 static
 cmsUInt32Number decodeUTF8(wchar_t* out, const char* in)
-{
-    cmsUInt32Number codepoint = 0;
+{    
+    cmsUInt32Number codepoint = 0;    
     cmsUInt32Number size = 0;
 
     while (*in)
@@ -242,7 +242,7 @@ cmsUInt32Number decodeUTF8(wchar_t* out, const char* in)
             codepoint = ch & 0x07;
         }
 
-        in++;
+        in++; 
 
         if (((*in & 0xc0) != 0x80) && (codepoint <= 0x10ffff))
         {
@@ -257,9 +257,10 @@ cmsUInt32Number decodeUTF8(wchar_t* out, const char* in)
                     if (out)
                     {
                         *out++ = (wchar_t)(0xd800 + (codepoint >> 10));
-                        *out++ = (wchar_t)(0xdc00 + (codepoint & 0x03ff));
-                        size += 2;
+                        *out++ = (wchar_t)(0xdc00 + (codepoint & 0x03ff));                        
                     }
+
+                    size += 2;
                 }
                 else
                     if (codepoint < 0xd800 || codepoint >= 0xe000)
@@ -268,19 +269,19 @@ cmsUInt32Number decodeUTF8(wchar_t* out, const char* in)
                         size++;
                     }
         }
-    }
-
+    }   
+    
     return size;
 }
 
-// Convert from wchar_t to UTF8
-static
+// Convert from wchar_t to UTF8 
+static 
 cmsUInt32Number encodeUTF8(char* out, const wchar_t* in, cmsUInt32Number max_wchars, cmsUInt32Number max_chars)
-{
+{       
     cmsUInt32Number codepoint = 0;
     cmsUInt32Number size = 0;
     cmsUInt32Number len_w = 0;
-
+        
     while (len_w < max_wchars && *in)
     {
         if (*in >= 0xd800 && *in <= 0xdbff)
@@ -303,7 +304,7 @@ cmsUInt32Number encodeUTF8(char* out, const wchar_t* in, cmsUInt32Number max_wch
                 if (out && (max_chars > 0) && (size + 2 < max_chars))
                 {
                     *out++ = (char)(cmsUInt32Number)(0xc0 | ((codepoint >> 6) & 0x1f));
-                    *out++ = (char)(cmsUInt32Number)(0x80 | (codepoint & 0x3f));
+                    *out++ = (char)(cmsUInt32Number)(0x80 | (codepoint & 0x3f));                    
                 }
                 size += 2;
             }
@@ -332,7 +333,7 @@ cmsUInt32Number encodeUTF8(char* out, const wchar_t* in, cmsUInt32Number max_wch
             codepoint = 0;
         }
 
-        in++; len_w++;
+        in++; len_w++;         
     }
 
     return size;
@@ -387,16 +388,16 @@ cmsBool CMSEXPORT cmsMLUsetUTF8(cmsMLU* mlu, const char LanguageCode[3], const c
         wchar_t empty = 0;
         return AddMLUBlock(mlu, sizeof(wchar_t), &empty, Lang, Cntry);
     }
-
+    
     // Len excluding terminator 0
     UTF8len = decodeUTF8(NULL, UTF8String);
-
+    
     // Get space for dest
     WStr = (wchar_t*) _cmsCalloc(mlu ->ContextID, UTF8len,  sizeof(wchar_t));
     if (WStr == NULL) return FALSE;
 
     decodeUTF8(WStr, UTF8String);
-
+    
     rc = AddMLUBlock(mlu, UTF8len  * sizeof(wchar_t), WStr, Lang, Cntry);
 
     _cmsFree(mlu ->ContextID, WStr);
@@ -613,7 +614,7 @@ cmsUInt32Number CMSEXPORT cmsMLUgetUTF8(const cmsMLU* mlu,
     if (Wide == NULL) return 0;
 
     UTF8len = encodeUTF8(NULL, Wide, StrLen / sizeof(wchar_t), BufferSize);
-
+       
     // Maybe we want only to know the len?
     if (Buffer == NULL) return UTF8len + 1; // Note the zero at the end
 
@@ -625,7 +626,7 @@ cmsUInt32Number CMSEXPORT cmsMLUgetUTF8(const cmsMLU* mlu,
         UTF8len = BufferSize - 1;
 
     // Process it
-    encodeUTF8(Buffer, Wide, StrLen / sizeof(wchar_t), BufferSize);
+    encodeUTF8(Buffer, Wide, StrLen / sizeof(wchar_t), BufferSize);    
 
     // We put a termination "\0"
     Buffer[UTF8len] = 0;
@@ -756,13 +757,13 @@ cmsBool  GrowNamedColorList(cmsNAMEDCOLORLIST* v)
 cmsNAMEDCOLORLIST* CMSEXPORT cmsAllocNamedColorList(cmsContext ContextID, cmsUInt32Number n, cmsUInt32Number ColorantCount, const char* Prefix, const char* Suffix)
 {
     cmsNAMEDCOLORLIST* v;
-
-    if (ColorantCount > cmsMAXCHANNELS)
+    
+    if (ColorantCount > cmsMAXCHANNELS) 
         return NULL;
-
+   
     v = (cmsNAMEDCOLORLIST*)_cmsMallocZero(ContextID, sizeof(cmsNAMEDCOLORLIST));
     if (v == NULL) return NULL;
-
+    
     v ->List      = NULL;
     v ->nColors   = 0;
     v ->ContextID  = ContextID;
@@ -812,7 +813,7 @@ cmsNAMEDCOLORLIST* CMSEXPORT cmsDupNamedColorList(const cmsNAMEDCOLORLIST* v)
     memmove(NewNC ->Prefix, v ->Prefix, sizeof(v ->Prefix));
     memmove(NewNC ->Suffix, v ->Suffix, sizeof(v ->Suffix));
     NewNC ->ColorantCount = v ->ColorantCount;
-    if (v->nColors > 0)
+    if (v->nColors > 0) 
         memmove(NewNC->List, v ->List, v->nColors * sizeof(_cmsNAMEDCOLOR));
     NewNC ->nColors = v ->nColors;
     return NewNC;
@@ -976,7 +977,7 @@ cmsNAMEDCOLORLIST* CMSEXPORT cmsGetNamedColorList(cmsHTRANSFORM xform)
 {
     _cmsTRANSFORM* v = (_cmsTRANSFORM*) xform;
     cmsStage* mpe;
-
+    
     if (v == NULL) return NULL;
     if (v->Lut == NULL) return NULL;
 

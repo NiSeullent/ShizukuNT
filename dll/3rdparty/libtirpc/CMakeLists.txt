@@ -13,7 +13,6 @@ list(APPEND SOURCE
     src/auth_none.c
     src/auth_sspi.c
     src/authsspi_prot.c
-    src/auth_time.c
     src/auth_unix.c
     src/authunix_prot.c
     src/bindresvport.c
@@ -73,7 +72,6 @@ list(APPEND SOURCE
     src/svc_run.c
     src/svc_simple.c
     src/svc_vc.c
-    src/winstubs.c
     src/wintirpc.c
     src/xdr_array.c
     src/xdr.c

@@ -2,7 +2,7 @@
  * PROJECT:     LiberNT API tests
  * COPYRIGHT:   Copyright 2026 Ahmed ARIF <arif.ing@outlook.com>
  * LICENSE:     GPL-3.0-or-later (https://spdx.org/licenses/GPL-3.0-or-later)
- * PURPOSE:     Native-paired ARM64 Control Flow Guard loader tests
+ * PURPOSE:     Control Flow Guard loader tests
  */
 
 #include <apitest.h>
@@ -18,6 +18,18 @@
 
 #define STATUS_STACK_BUFFER_OVERRUN ((DWORD)0xc0000409)
 #define STATUS_INSTRUCTION_MISALIGNMENT ((DWORD)0xc00000aa)
+
+#if defined(_M_ARM64)
+#define CFG_MISALIGNED_EXIT STATUS_INSTRUCTION_MISALIGNMENT
+#else
+#define CFG_MISALIGNED_EXIT STATUS_STACK_BUFFER_OVERRUN
+#endif
+
+#if defined(_M_IX86)
+#define CFG_HAS_DISPATCH FALSE
+#else
+#define CFG_HAS_DISPATCH TRUE
+#endif
 
 typedef BOOL (WINAPI *PFN_GET_PROCESS_MITIGATION_POLICY)(HANDLE, DWORD, PVOID, SIZE_T);
 
@@ -43,11 +55,16 @@ static const CFG_CHILD_EXPECTATION ChildExpectations[] =
     {L"valid-floating-arguments", 0},
     {L"valid-vector-arguments", 0},
     {L"valid-guarded",     0},
+    {L"valid-sections",    0},
     {L"notable-guarded",   0},
     {L"notable-interior",  0},
+    {L"nodispatch-guarded", 0},
+#if defined(_M_IX86)
+    {L"dirsize-interior",  STATUS_STACK_BUFFER_OVERRUN},
+#endif
     {L"plain-interior",    0},
     {L"invalid-aligned",   STATUS_STACK_BUFFER_OVERRUN},
-    {L"invalid-misaligned", STATUS_INSTRUCTION_MISALIGNMENT},
+    {L"invalid-misaligned", CFG_MISALIGNED_EXIT},
     {L"dynamic-default",   0},
     {L"dynamic-invalid",   STATUS_STACK_BUFFER_OVERRUN},
     {L"dynamic-register",  0},
@@ -123,7 +140,7 @@ TestGuardedImage(HMODULE Module, const char *Name, const void *RequiredTarget, C
     Count = Image->LoadConfig->GuardCFFunctionCount;
     Stride = sizeof(DWORD) + ((Image->LoadConfig->GuardFlags & IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_MASK) >> IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_SHIFT);
     ok(Count != 0 && Count < 0x100000, "%s has invalid Guard FID count %I64u\n", Name, Count);
-    ok(Stride >= sizeof(DWORD) && Stride <= 32, "%s has invalid Guard FID stride %Iu\n", Name, Stride);
+    ok(Stride >= sizeof(DWORD) && Stride <= 32, "%s has invalid Guard FID stride %Iu\n", Name, (size_t)Stride);
     Table = (const BYTE *)(ULONG_PTR)Image->LoadConfig->GuardCFFunctionTable;
     ok(AddressInImage(Table, Image, (SIZE_T)Count * Stride), "%s Guard FID table is outside the image\n", Name);
     if (!AddressInImage(Table, Image, (SIZE_T)Count * Stride))
@@ -143,14 +160,18 @@ TestGuardedImage(HMODULE Module, const char *Name, const void *RequiredTarget, C
     }
     ok(RequiredFound, "%s required target RVA %lx is absent or suppressed\n", Name, RequiredRva);
     ok(AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFCheckFunctionPointer, Image, sizeof(PVOID)), "%s check slot is outside the image\n", Name);
-    ok(AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer, Image, sizeof(PVOID)), "%s dispatch slot is outside the image\n", Name);
-    if (!AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFCheckFunctionPointer, Image, sizeof(PVOID)) || !AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer, Image, sizeof(PVOID)))
+    if (!AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFCheckFunctionPointer, Image, sizeof(PVOID)))
         return FALSE;
     Image->CheckTarget = *(const void * const *)(ULONG_PTR)Image->LoadConfig->GuardCFCheckFunctionPointer;
-    Image->DispatchTarget = *(const void * const *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer;
     ok(Image->CheckTarget != NULL, "%s resolved check target is NULL\n", Name);
-    ok(Image->DispatchTarget != NULL, "%s resolved dispatch target is NULL\n", Name);
     ok(!AddressInImage(Image->CheckTarget, Image, 1), "%s check target remained image-local\n", Name);
+    if (!CFG_HAS_DISPATCH)
+        return TRUE;
+    ok(AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer, Image, sizeof(PVOID)), "%s dispatch slot is outside the image\n", Name);
+    if (!AddressInImage((const void *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer, Image, sizeof(PVOID)))
+        return FALSE;
+    Image->DispatchTarget = *(const void * const *)(ULONG_PTR)Image->LoadConfig->GuardCFDispatchFunctionPointer;
+    ok(Image->DispatchTarget != NULL, "%s resolved dispatch target is NULL\n", Name);
     ok(!AddressInImage(Image->DispatchTarget, Image, 1), "%s dispatch target remained image-local\n", Name);
     return TRUE;
 }
@@ -239,7 +260,7 @@ TestProcessPolicy(void)
     ok(Result, "GetProcessMitigationPolicy(CFG) failed: %lu\n", GetLastError());
     if (Result)
         ok((Policy & 1) != 0, "CFG-enabled image has process policy %#lx\n", Policy);
-    trace("CFGOBS|policy|result=%u|error=%lu|flags=%08lx|settargets=%p\n", Result, GetLastError(), Policy, SetValidTargets);
+    trace("CFGOBS|policy|result=%d|error=%lu|flags=%08lx|settargets=%p\n", Result, GetLastError(), Policy, SetValidTargets);
 }
 
 START_TEST(cfg)

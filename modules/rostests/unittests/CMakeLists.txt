@@ -1,4 +1,5 @@
 
+add_subdirectory(dnsapi)
 add_subdirectory(interop)
 add_subdirectory(newdev)
 if(ISAPNP_ENABLE)

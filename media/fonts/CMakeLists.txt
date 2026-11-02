@@ -11,6 +11,7 @@ list(APPEND FONT_FILES
     courbd.ttf
     courbi.ttf
     couri.ttf
+    D2Coding-Regular.ttf
     framd.ttf
     framdit.ttf
     FreeSans.ttf
@@ -27,7 +28,10 @@ list(APPEND FONT_FILES
     Marlett.ttf
     micross.ttf
     NotoSansJP-Regular.otf
+    NotoSansKR-Bold.otf
+    NotoSansKR-Regular.otf
     NotoSansSC-Regular.otf
+    NotoSerifKR-Regular.otf
     pala.ttf
     palab.ttf
     palabi.ttf
@@ -77,3 +81,9 @@ add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/NotoSansJP/LICENSE.txt"
     DESTINATION reactos NAME_ON_CD NotoSansJP-LICENSE.txt NO_CAB FOR all)
 add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/NotoSansSC/LICENSE.txt"
     DESTINATION reactos NAME_ON_CD NotoSansSC-LICENSE.txt NO_CAB FOR all)
+add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/NotoSansKR/LICENSE.txt"
+    DESTINATION reactos NAME_ON_CD NotoSansKR-LICENSE.txt NO_CAB FOR all)
+add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/NotoSerifKR/LICENSE.txt"
+    DESTINATION reactos NAME_ON_CD NotoSerifKR-LICENSE.txt NO_CAB FOR all)
+add_cd_file(FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/D2Coding/LICENSE.txt"
+    DESTINATION reactos NAME_ON_CD D2Coding-LICENSE.txt NO_CAB FOR all)

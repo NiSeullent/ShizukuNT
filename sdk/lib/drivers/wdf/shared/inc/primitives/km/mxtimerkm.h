@@ -94,22 +94,21 @@ MxTimer::~MxTimer(
     VOID
     )
 {
-    // __REACTOS__ Ex timers are not supported
-    // BOOLEAN wasCancelled;
+    BOOLEAN wasCancelled;
 
-    // if (m_Timer.m_IsExtTimer &&
-    //     m_Timer.m_KernelExTimer) {
-    //     wasCancelled = ExDeleteTimer(m_Timer.m_KernelExTimer,
-    //                                  TRUE, // Cancel if pending. We don't expect
-    //                                        // it to be pending though
-    //                                  FALSE,// Wait
-    //                                  NULL);
-    //     //
-    //     // Timer should not have been pending
-    //     //
-    //     ASSERT(wasCancelled == FALSE);
-    //     m_Timer.m_KernelExTimer = NULL;
-    // }
+    if (m_Timer.m_IsExtTimer &&
+        m_Timer.m_KernelExTimer) {
+        wasCancelled = ExDeleteTimer(m_Timer.m_KernelExTimer,
+                                     TRUE, // Cancel if pending. We don't expect
+                                           // it to be pending though
+                                     FALSE,// Wait
+                                     NULL);
+        //
+        // Timer should not have been pending
+        //
+        ASSERT(wasCancelled == FALSE);
+        m_Timer.m_KernelExTimer = NULL;
+    }
 }
 
 NTSTATUS
@@ -169,38 +168,37 @@ Returns:
 --*/
 
 {
-    // NTSTATUS status;
-    // ULONG attributes = 0;
+    NTSTATUS status;
+    ULONG attributes = 0;
 
-    // m_Timer.m_TimerContext = TimerContext;
-    // m_Timer.m_ExTimerCallback = TimerCallback;
-    // m_Timer.m_Period = Period;
+    m_Timer.m_TimerContext = TimerContext;
+    m_Timer.m_ExTimerCallback = TimerCallback;
+    m_Timer.m_Period = Period;
 
-    // if (TolerableDelay != 0) {
+    if (TolerableDelay != 0) {
 
-    //     attributes |= EX_TIMER_NO_WAKE;
+        attributes |= EX_TIMER_NO_WAKE;
 
-    // } else if (UseHighResolutionTimer) {
+    } else if (UseHighResolutionTimer) {
 
-    //     attributes |= EX_TIMER_HIGH_RESOLUTION;
-    // }
+        attributes |= EX_TIMER_HIGH_RESOLUTION;
+    }
 
-    // m_Timer.m_KernelExTimer = ExAllocateTimer(m_Timer.m_ExTimerCallback,
-    //                                           TimerContext,
-    //                                           attributes);
-    // if (m_Timer.m_KernelExTimer) {
+    m_Timer.m_KernelExTimer = ExAllocateTimer(m_Timer.m_ExTimerCallback,
+                                              TimerContext,
+                                              attributes);
+    if (m_Timer.m_KernelExTimer) {
 
-    //     status = STATUS_SUCCESS;
+        status = STATUS_SUCCESS;
 
-    // } else {
+    } else {
 
-    //     status = STATUS_INSUFFICIENT_RESOURCES;
-    // }
+        status = STATUS_INSUFFICIENT_RESOURCES;
+    }
 
-    // m_Timer.m_IsExtTimer = TRUE;
+    m_Timer.m_IsExtTimer = TRUE;
 
-    // return status;
-    return STATUS_NOT_IMPLEMENTED; // __REACTOS__ Ex timers are not supported
+    return status;
 }
 
 
@@ -212,29 +210,27 @@ MxTimer::StartWithReturn(
     )
 {
     if (m_Timer.m_IsExtTimer) {
-        // __REACTOS__ Ex timers are not supported
-        // EXT_SET_PARAMETERS parameters;
+        EXT_SET_PARAMETERS parameters;
 
-        // ExInitializeSetTimerParameters(&parameters);
+        ExInitializeSetTimerParameters(&parameters);
 
-        // //
-        // // We get the delay in ms but the underlying API needs it in 100 ns
-        // // units. Convert tolerable delay from ms to 100 ns. However,
-        // // MAXULONG (TolerableDelayUnlimited) has a special meaning that the
-        // // system should never be woken up, so we assign the corresponding
-        // // special value for Ex timers
-        // //
-        // if (TolerableDelay == TolerableDelayUnlimited) {
-        //     parameters.NoWakeTolerance = EX_TIMER_UNLIMITED_TOLERANCE;
-        // } else {
-        //     parameters.NoWakeTolerance = ((LONGLONG) TolerableDelay) * 10 * 1000;
-        // }
+        //
+        // We get the delay in ms but the underlying API needs it in 100 ns
+        // units. Convert tolerable delay from ms to 100 ns. However,
+        // MAXULONG (TolerableDelayUnlimited) has a special meaning that the
+        // system should never be woken up, so we assign the corresponding
+        // special value for Ex timers
+        //
+        if (TolerableDelay == TolerableDelayUnlimited) {
+            parameters.NoWakeTolerance = EX_TIMER_UNLIMITED_TOLERANCE;
+        } else {
+            parameters.NoWakeTolerance = ((LONGLONG) TolerableDelay) * 10 * 1000;
+        }
 
-        // return ExSetTimer(m_Timer.m_KernelExTimer,
-        //                   DueTime.QuadPart,
-        //                   (((LONGLONG) m_Timer.m_Period) * 10 * 1000),
-        //                   &parameters);
-        return FALSE;
+        return ExSetTimer(m_Timer.m_KernelExTimer,
+                          DueTime.QuadPart,
+                          (((LONGLONG) m_Timer.m_Period) * 10 * 1000),
+                          &parameters);
     } else {
 
         return KeSetCoalescableTimer(&(m_Timer.KernelTimer),
@@ -274,12 +270,12 @@ MxTimer::Stop(
     VOID
     )
 {
-    BOOLEAN bRetVal;
+    BOOLEAN bRetVal = TRUE;
 
     if (m_Timer.m_IsExtTimer) {
-        bRetVal = FALSE;
-        // bRetVal = ExCancelTimer(m_Timer.m_KernelExTimer, NULL); // __REACTOS__ Ex timers are not supported
-
+        if (m_Timer.m_KernelExTimer) {
+            bRetVal = ExCancelTimer(m_Timer.m_KernelExTimer, NULL);
+        }
     } else {
         bRetVal = KeCancelTimer(&(m_Timer.KernelTimer));
     }

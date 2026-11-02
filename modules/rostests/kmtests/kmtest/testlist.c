@@ -25,6 +25,7 @@ KMT_TESTFUNC Test_IoAddDeviceUnload;
 KMT_TESTFUNC Test_IoCreateFile;
 KMT_TESTFUNC Test_IoDeviceObject;
 KMT_TESTFUNC Test_IoReadWrite;
+KMT_TESTFUNC Test_KmdfStub;
 KMT_TESTFUNC Test_MmMapLockedPagesSpecifyCache;
 KMT_TESTFUNC Test_NtCreateSection;
 KMT_TESTFUNC Test_NtSystemDebugControl;
@@ -49,6 +50,7 @@ KMT_TESTFUNC Test_RtlUnicodeString;
 KMT_TESTFUNC Test_TcpIpIoctl;
 KMT_TESTFUNC Test_TcpIpTdi;
 KMT_TESTFUNC Test_TcpIpConnect;
+KMT_TESTFUNC Test_WdfBind;
 KMT_TESTFUNC Test_WfpListen;
 KMT_TESTFUNC Test_WfpTcp;
 KMT_TESTFUNC Test_WfpUdp;
@@ -76,6 +78,7 @@ const KMT_TEST TestList[] =
     { "IoCreateFile",                 Test_IoCreateFile },
     { "IoDeviceObject",               Test_IoDeviceObject },
     { "IoReadWrite",                  Test_IoReadWrite },
+    { "KmdfStub",                     Test_KmdfStub },
     { "MmMapLockedPagesSpecifyCache", Test_MmMapLockedPagesSpecifyCache },
     { "NtCreateSection",              Test_NtCreateSection },
     { "NtSystemDebugControl",         Test_NtSystemDebugControl },
@@ -98,6 +101,7 @@ const KMT_TEST TestList[] =
     { "RtlUnicodeString",             Test_RtlUnicodeString },
     { "TcpIpTdi",                     Test_TcpIpTdi },
     { "TcpIpConnect",                 Test_TcpIpConnect },
+    { "WdfBind",                      Test_WdfBind },
     { "WfpListen",                    Test_WfpListen },
     { "WfpTcp",                       Test_WfpTcp },
     { "WfpUdp",                       Test_WfpUdp },

@@ -1,4 +1,5 @@
 
+include(${REACTOS_SOURCE_DIR}/sdk/lib/drivers/permissive/permissive.cmake)
 spec2def(classpnp.sys classpnp.spec ADD_IMPORTLIB)
 
 remove_definitions(-D_WIN32_WINNT=${REACTOS_TARGET_NT} -DWINVER=${REACTOS_TARGET_NT})
@@ -50,8 +51,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 set_module_type(classpnp kernelmodedriver)
-target_link_libraries(classpnp ntoskrnl_vista libcntpr ${PSEH_LIB})
+target_link_libraries(classpnp ${PSEH_LIB})
 add_importlibs(classpnp ntoskrnl hal)
+set_module_permissive_runtime(classpnp)
 add_cd_file(TARGET classpnp DESTINATION reactos/system32/drivers NO_CAB FOR all)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")

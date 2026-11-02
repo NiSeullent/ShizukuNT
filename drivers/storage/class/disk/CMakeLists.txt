@@ -1,4 +1,5 @@
 
+include(${REACTOS_SOURCE_DIR}/sdk/lib/drivers/permissive/permissive.cmake)
 remove_definitions(-D_WIN32_WINNT=${REACTOS_TARGET_NT} -DWINVER=${REACTOS_TARGET_NT})
 
 list(APPEND SOURCE
@@ -26,8 +27,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 set_module_type(disk kernelmodedriver)
-target_link_libraries(disk ntoskrnl_vista libcntpr wdmguid)
+target_link_libraries(disk wdmguid)
 add_importlibs(disk classpnp ntoskrnl hal)
+set_module_permissive_runtime(disk)
 add_cd_file(TARGET disk DESTINATION reactos/system32/drivers NO_CAB FOR all)
 add_registry_inf(disk_reg.inf)
 add_driver_inf(disk disk.inf)

@@ -10,3 +10,8 @@ int __cdecl _set_FMA3_enable(int flag)
     (void)flag;
     return 0;
 }
+
+int __cdecl _get_FMA3_enable(void)
+{
+    return 0;
+}

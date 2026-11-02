@@ -33,9 +33,10 @@ DefaultDestDir = 12
 AddReg = WifiLoop_AddReg
 CopyFiles = WifiLoop_CopyFiles
 Characteristics = 0x1
-*IfType = 6
-*MediaType = 0
-*PhysicalMediaType = 14
+*IfType = 71
+*MediaType = 16
+*PhysicalMediaType = 9
+NumberOfNetworkInterfaces = 5
 *IfConnectorPresent = 0
 *ConnectionType = 1
 *DirectionType = 0
@@ -48,7 +49,7 @@ wifiloop.sys
 [WifiLoop_AddReg]
 HKR, Ndi, Service, 0, "WifiLoop"
 HKR, Ndi\Interfaces, UpperRange, 0, "ndis5"
-HKR, Ndi\Interfaces, LowerRange, 0, "ethernet"
+HKR, Ndi\Interfaces, LowerRange, 0, "wlan,ethernet"
 
 [WifiLoop_Device.NT.Services]
 AddService = WifiLoop, 0x00000002, WifiLoop_Service

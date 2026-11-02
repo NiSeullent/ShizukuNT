@@ -1,9 +1,14 @@
 # Copyright 2026 Ahmed ARIF <arif.ing@outlook.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+if(ARCH STREQUAL "amd64" OR ARCH STREQUAL "i386")
+    add_asm_files(cfg_load_config_asm ${ARCH}/guardcf.S)
+endif()
+
 spec2def(cfg_guarded.dll cfg_guarded.spec ADD_IMPORTLIB)
 add_library(cfg_guarded MODULE
     cfg_guarded.c
+    ${cfg_load_config_asm}
     ${CMAKE_CURRENT_BINARY_DIR}/cfg_guarded.def)
 set_module_type(cfg_guarded win32dll)
 target_compile_options(cfg_guarded PRIVATE -mguard=cf)
@@ -17,14 +22,14 @@ add_library(cfg_plain MODULE
 set_module_type(cfg_plain win32dll)
 add_importlibs(cfg_plain msvcrt kernel32 ntdll)
 
-add_executable(cfg_child cfg_child.c)
+add_executable(cfg_child cfg_child.c ${cfg_load_config_asm})
 set_module_type(cfg_child win32cui)
 target_compile_options(cfg_child PRIVATE -mguard=cf)
 target_link_options(cfg_child PRIVATE -Wl,--guard-cf)
 add_importlibs(cfg_child msvcrt kernel32 ntdll)
 add_dependencies(cfg_child cfg_guarded cfg_plain)
 
-add_executable(cfg_apitest cfg.c testlist.c)
+add_executable(cfg_apitest cfg.c testlist.c ${cfg_load_config_asm})
 set_module_type(cfg_apitest win32cui)
 target_compile_options(cfg_apitest PRIVATE -mguard=cf)
 target_link_options(cfg_apitest PRIVATE -Wl,--guard-cf)

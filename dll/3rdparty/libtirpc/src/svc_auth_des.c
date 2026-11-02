@@ -61,7 +61,6 @@
 #include <rpc/svc.h>
 #include <rpc/rpc_msg.h>
 #include <rpc/svc_auth.h>
-#include <libc_private.h>
 
 extern int key_decryptsession_pk(const char *, netobj *, des_block *);
 

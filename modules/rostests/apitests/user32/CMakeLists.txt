@@ -24,6 +24,7 @@ list(APPEND SOURCE
     DestroyCursorIcon.c
     DestroyActiveWindow.c
     DestroyWindow.c
+    DialogAccelerator.c
     DialogDpiChangeBehavior.c
     DM_REPOSITION.c
     Dpi.c
@@ -59,12 +60,14 @@ list(APPEND SOURCE
     IsTopLevelWindow.c
     IsServerSideWindow.c
     JobUiWindowAccess.c
+    KbdKorean.c
     KbdLayout.c
     LargeMessageBuffers.c
     keybd_event.c
     LoadImage.c
     LoadImageGCC.c
     LookupIconIdFromDirectoryEx.c
+    MaximizedCaptionClick.c
     MenuUI.c
     MenuItemData.c
     MessageStateAnalyzer.c

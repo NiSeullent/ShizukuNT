@@ -45,6 +45,7 @@ FxTimer::FxTimer(
    m_Object = NULL;
    m_Period = 0;
    m_TolerableDelay = 0;
+   m_UseHighResolutionTimer = FALSE;
    m_CallbackLock = NULL;
    m_CallbackLockObject = NULL;
    m_Callback = NULL;
@@ -160,12 +161,10 @@ FxTimer::Initialize(
     //
 
 #if (FX_CORE_MODE == FX_CORE_KERNEL_MODE)
-    // __REACTOS__ Ex timers are not supported
-    // if (pFxDriverGlobals->IsVersionGreaterThanOrEqualTo(1,13)) {
-    //     status = m_Timer.InitializeEx(this, FxTimer::_FxTimerExtCallbackThunk, m_Period,
-    //                                   m_TolerableDelay, m_UseHighResolutionTimer);
-    // } else
-    {
+    if (pFxDriverGlobals->IsVersionGreaterThanOrEqualTo(1,13)) {
+        status = m_Timer.InitializeEx(this, FxTimer::_FxTimerExtCallbackThunk, m_Period,
+                                      m_TolerableDelay, m_UseHighResolutionTimer);
+    } else {
         status = m_Timer.Initialize(this, FxTimer::_FxTimerDpcThunk, m_Period);
     }
 #else

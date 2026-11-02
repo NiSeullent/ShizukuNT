@@ -57,6 +57,10 @@ list(APPEND SOURCE
 
 set_source_files_properties(ucrtbase_winetest.rc OBJECT_DEPENDS threaddll)
 
+if(NOT MSVC)
+    set_source_files_properties(misc.c PROPERTIES COMPILE_OPTIONS "-fno-builtin")
+endif()
+
 add_executable(ucrtbase_winetest ${SOURCE})
 set_module_type(ucrtbase_winetest win32cui)
 

@@ -1,5 +1,6 @@
 #include "precomp.h"
 #include <winreg.h>
+#include <winsock2.h>
 #include <ws2ipdef.h>
 #include <iphlpapi.h>
 #include <netioapi.h>

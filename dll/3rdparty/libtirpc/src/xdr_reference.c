@@ -47,7 +47,6 @@
 
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-#include "libc_private.h"
 
 /*
  * XDR an indirect pointer

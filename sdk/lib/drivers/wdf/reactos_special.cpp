@@ -37,6 +37,7 @@ imp_WdfDmaTransactionSetSingleTransferRequirement(
     UNREFERENCED_PARAMETER(DriverGlobals);
     UNREFERENCED_PARAMETER(DmaTransaction);
     UNREFERENCED_PARAMETER(RequireSingleTransfer);
+    /* FIXME: the requirement is ignored, so the transaction can still be split into several transfers */
 }
 
 ULONG
@@ -48,6 +49,7 @@ imp_WdfFileObjectGetInitiatorProcessId(
 {
     UNREFERENCED_PARAMETER(DriverGlobals);
     UNREFERENCED_PARAMETER(FileObject);
+    /* TODO: return the create initiator once the I/O manager implements IoGetInitiatorProcess */
     return 0;
 }
 

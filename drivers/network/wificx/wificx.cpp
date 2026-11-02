@@ -550,7 +550,7 @@ WxEnsureEngine(
 
         RtlZeroMemory(&Transport, sizeof(Transport));
         Transport.Size = sizeof(Transport);
-        Transport.WdiVersion = Dev->Config.WdiVersion;
+        Transport.WdiVersion = min(Dev->Config.WdiVersion, (ULONG)WDI_VERSION_LATEST);
         Transport.Context = Dev;
         Transport.SendCommand = WxEngineSendCommand;
 
@@ -1553,6 +1553,9 @@ static PVOID const WxFunctions[] =
 };
 
 C_ASSERT(RTL_NUMBER_OF(WxFunctions) == WifiFunctionTableNumEntries);
+C_ASSERT(FIELD_OFFSET(MLO_LINK_INFO, StaLinkAddress) == 4);
+C_ASSERT(FIELD_OFFSET(MLO_LINK_INFO, APLinkAddress) == 10);
+C_ASSERT(sizeof(MLO_LINK_INFO) == 16);
 
 static
 NTSTATUS

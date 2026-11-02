@@ -22,6 +22,7 @@ extern void func_DeskWallpaper(void);
 extern void func_DestroyCursorIcon(void);
 extern void func_DestroyActiveWindow(void);
 extern void func_DestroyWindow(void);
+extern void func_DialogAccelerator(void);
 extern void func_DialogDpiChangeBehavior(void);
 extern void func_DM_REPOSITION(void);
 extern void func_Dpi(void);
@@ -59,12 +60,14 @@ extern void func_InvalidHandles(void);
 extern void func_IsTopLevelWindow(void);
 extern void func_IsServerSideWindow(void);
 extern void func_JobUiWindowAccess(void);
+extern void func_KbdKorean(void);
 extern void func_KbdLayout(void);
 extern void func_LargeMessageBuffers(void);
 extern void func_keybd_event(void);
 extern void func_LoadImage(void);
 extern void func_LoadImageGCC(void);
 extern void func_LookupIconIdFromDirectoryEx(void);
+extern void func_MaximizedCaptionClick(void);
 extern void func_MenuUI(void);
 extern void func_MenuItemData(void);
 extern void func_MessageStateAnalyzer(void);
@@ -142,6 +145,7 @@ const struct test winetest_testlist[] =
     { "DestroyCursorIcon", func_DestroyCursorIcon },
     { "DestroyActiveWindow", func_DestroyActiveWindow },
     { "DestroyWindow", func_DestroyWindow },
+    { "DialogAccelerator", func_DialogAccelerator },
     { "DialogDpiChangeBehavior", func_DialogDpiChangeBehavior },
     { "DM_REPOSITION", func_DM_REPOSITION },
     { "Dpi", func_Dpi },
@@ -179,12 +183,14 @@ const struct test winetest_testlist[] =
     { "IsTopLevelWindow", func_IsTopLevelWindow },
     { "IsServerSideWindow", func_IsServerSideWindow },
     { "JobUiWindowAccess", func_JobUiWindowAccess },
+    { "KbdKorean", func_KbdKorean },
     { "KbdLayout", func_KbdLayout },
     { "LargeMessageBuffers", func_LargeMessageBuffers },
     { "keybd_event", func_keybd_event },
     { "LoadImage", func_LoadImage },
     { "LoadImageGCC", func_LoadImageGCC },
     { "LookupIconIdFromDirectoryEx", func_LookupIconIdFromDirectoryEx },
+    { "MaximizedCaptionClick", func_MaximizedCaptionClick },
     { "MenuUI", func_MenuUI },
     { "MenuItemData", func_MenuItemData },
     { "MessageStateAnalyzer", func_MessageStateAnalyzer },

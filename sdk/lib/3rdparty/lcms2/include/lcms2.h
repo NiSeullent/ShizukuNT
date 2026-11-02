@@ -23,7 +23,7 @@
 //
 //---------------------------------------------------------------------------------
 //
-// Version 2.19
+// Version 2.20
 //
 
 #ifndef _lcms2_H
@@ -39,7 +39,7 @@
 
 // Uncomment this one to enable large file support on file/stream I/O.
 // LittleCMS is still limited by ICC 32-bit offsets and sizes, so the
-// practical maximum remains 4 GiB minus profile overhead. Be careful
+// practical maximum remains 4 GiB minus profile overhead. Be careful 
 // because such huge profiles have to be loaded into memory and that's
 // usually a very bad idea.
 // #define CMS_LARGE_FILE_SUPPORT    1
@@ -86,7 +86,9 @@
 
 #ifndef CMS_USE_CPP_API
 #   ifdef __cplusplus
-#       if __cplusplus >= 201703L
+        // MSVC keeps __cplusplus at 199711L unless /Zc:__cplusplus is passed, so also
+        // honor _MSVC_LANG; otherwise the C++17 'register' removal below never triggers.
+#       if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 #            define CMS_NO_REGISTER_KEYWORD 1
 #       endif
 extern "C" {
@@ -94,7 +96,7 @@ extern "C" {
 #endif
 
 // Version/release
-#define LCMS_VERSION        2190
+#define LCMS_VERSION        2200
 
 // I will give the chance of redefining basic types for compilers that are not fully C99 compliant
 #ifndef CMS_BASIC_TYPES_ALREADY_DEFINED
@@ -175,7 +177,7 @@ typedef double               cmsFloat64Number;
 #ifdef CMS_DONT_USE_INT64
     typedef cmsUInt32Number      cmsUInt64Number[2];
     typedef cmsInt32Number       cmsInt64Number[2];
-#   if defined(CMS_LARGE_FILE_SUPPORT)
+#   if defined(CMS_LARGE_FILE_SUPPORT) 
 #      error "You need int64 for large file support"
 #   endif
 #endif
@@ -306,7 +308,7 @@ typedef int                  cmsBool;
 // Base ICC type definitions
 typedef enum {
     cmsSigChromaticityType                  = 0x6368726D,  // 'chrm'
-    cmsSigcicpType                          = 0x63696370,  // 'cicp'
+    cmsSigcicpType                          = 0x63696370,  // 'cicp' 
     cmsSigColorantOrderType                 = 0x636C726F,  // 'clro'
     cmsSigColorantTableType                 = 0x636C7274,  // 'clrt'
     cmsSigCrdInfoType                       = 0x63726469,  // 'crdi'
@@ -517,10 +519,10 @@ typedef enum {
     cmsSigNamedColorClass                   = 0x6e6d636c,  // 'nmcl'
 
                                                             // iccMAX only
-    cmsSigColorEncodingSpaceClass           = 0x63656E63,  // 'cenc'
+    cmsSigColorEncodingSpaceClass           = 0x63656E63,  // 'cenc' 
     cmsSigMultiplexIdentificationClass      = 0x6D696420,  // 'mid '
     cmsSigMultiplexLinkClass                = 0x6d6c6e6b,  // 'mlnk'
-    cmsSigMultiplexVisualizationClass       = 0x6d766973   // 'mvis'
+    cmsSigMultiplexVisualizationClass       = 0x6d766973   // 'mvis'    
 
 } cmsProfileClassSignature;
 

@@ -19,12 +19,21 @@ typedef CFG_CALL_TARGET_INFO CFG_CALL_TARGET_INFO_LOCAL;
 
 typedef BOOL (WINAPI *PFN_SET_PROCESS_VALID_CALL_TARGETS)(HANDLE, PVOID, SIZE_T, ULONG, CFG_CALL_TARGET_INFO_LOCAL *);
 
+#if defined(_M_IX86) || defined(_M_AMD64)
+__declspec(dllexport) __attribute__((naked))
+DWORD WINAPI
+CfgPlainTarget(VOID)
+{
+    __asm__ __volatile__("movl $0x47f, %eax\n\tret");
+}
+#else
 __declspec(dllexport) __declspec(noinline)
 DWORD WINAPI
 CfgPlainTarget(VOID)
 {
     return 0x47f;
 }
+#endif
 
 __declspec(dllexport)
 BOOL WINAPI

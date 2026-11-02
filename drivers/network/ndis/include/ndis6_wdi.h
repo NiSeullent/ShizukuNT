@@ -66,6 +66,7 @@
 #define WDI_TLV_PEER_MAC_ADDRESS                    0x4C
 #define WDI_TLV_CIPHER_KEY_ID                       0x4D
 #define WDI_TLV_CIPHER_KEY_TYPE_INFO                0x4E
+#define WDI_TLV_CIPHER_KEY_RECEIVE_SEQUENCE_COUNT   0x4F
 #define WDI_TLV_CIPHER_KEY_CCMP_KEY                 0x50
 #define WDI_TLV_CIPHER_KEY_BIP_KEY                  0x51
 #define WDI_TLV_SET_CIPHER_KEY_INFO                 0x52
@@ -92,6 +93,12 @@
 #define WDI_TLV_IHV_NON_WDI_OIDS_LIST               0x104
 #define WDI_TLV_PLDR_SUPPORT                        0x11A
 #define WDI_TLV_CIPHER_KEY_GCMP_KEY                 0x12F
+
+#define WDI_VERSION_2_0_0                           ((2 << 16) | (0 << 8) | 0x0)
+#define WDI_VERSION_2_0_7                           ((2 << 16) | (0 << 8) | 0x7)
+#define WDI_VERSION_2_0_8                           ((2 << 16) | (0 << 8) | 0x8)
+#define WDI_VERSION_2_0_10                          ((2 << 16) | (0 << 8) | 0xa)
+#define WDI_VERSION_2_0_14                          ((2 << 16) | (0 << 8) | 0xe)
 
 #define WDI_SCAN_TYPE_ACTIVE_ONLY                   1
 #define WDI_SCAN_TYPE_PASSIVE_ONLY                  2
@@ -344,6 +351,7 @@ struct _NDIS6_WDI_ADAPTER
     PNDIS_MINIPORT_DRIVER_WDI_CHARACTERISTICS Wdi;
     PNDIS_MINIPORT_DRIVER_CHARACTERISTICS Ihv;
     NDIS_HANDLE IhvContext;
+    ULONG PeerVersion;
     NDIS_MINIPORT_DRIVER_WDI_CHARACTERISTICS EngineWdi;
     NDIS_MINIPORT_DRIVER_CHARACTERISTICS EngineIhv;
     NDIS_MINIPORT_ADAPTER_REGISTRATION_ATTRIBUTES IhvRegistration;

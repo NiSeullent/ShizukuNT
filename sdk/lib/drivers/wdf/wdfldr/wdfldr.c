@@ -479,6 +479,7 @@ WdfVersionBind(
     DPRINT_VERBOSE(("Calling LibraryRegisterClient at %p for library %wZ\n",
                    pLibModule->LibraryInfo->LibraryRegisterClient, &pLibModule->ServicePath));
 
+    context = &clientInfo;
     status = pLibModule->LibraryInfo->LibraryRegisterClient(BindInfo, ComponentGlobals, &context);
     if (NT_SUCCESS(status))
     {

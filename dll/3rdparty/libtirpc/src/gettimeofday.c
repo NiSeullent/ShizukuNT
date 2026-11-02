@@ -1,44 +1,40 @@
-/* XXX NEED Copyright info */
+/*
+ * PROJECT:     LiberNT TI-RPC library
+ * LICENSE:     LGPL-2.1-or-later (https://spdx.org/licenses/LGPL-2.1-or-later)
+ * PURPOSE:     BSD gettimeofday() on top of the Win32 system time
+ * COPYRIGHT:   Copyright 2026 NiSeullent <coolfriendsbz@gmail.com>
+ */
+
 #include <wintirpc.h>
 #include <time.h>
- 
-#if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
-  #define DELTA_EPOCH_IN_MICROSECS  11644473600000000Ui64
-#else
-  #define DELTA_EPOCH_IN_MICROSECS  11644473600000000ULL
-#endif
- 
-int gettimeofday(struct timeval *tv, struct timezone *tz)
+
+#define TICKS_PER_SECOND        10000000ULL
+#define TICKS_PER_MICROSECOND   10ULL
+#define TICKS_1601_TO_1970      116444736000000000ULL
+
+int
+gettimeofday(struct timeval *tv, struct timezone *tz)
 {
-  FILETIME ft;
-  unsigned __int64 tmpres = 0;
-  static int tzflag;
- 
-  if (NULL != tv)
-  {
-    GetSystemTimeAsFileTime(&ft);
- 
-    tmpres |= ft.dwHighDateTime;
-    tmpres <<= 32;
-    tmpres |= ft.dwLowDateTime;
- 
-    /*converting file time to unix epoch*/
-    tmpres /= 10;  /*convert into microseconds*/
-    tmpres -= DELTA_EPOCH_IN_MICROSECS; 
-    tv->tv_sec = (long)(tmpres / 1000000UL);
-    tv->tv_usec = (long)(tmpres % 1000000UL);
-  }
- 
-  if (NULL != tz)
-  {
-    if (!tzflag)
+    if (tv != NULL)
     {
-      _tzset();
-      tzflag++;
+        FILETIME SystemTime;
+        ULARGE_INTEGER Ticks;
+
+        GetSystemTimeAsFileTime(&SystemTime);
+        Ticks.LowPart = SystemTime.dwLowDateTime;
+        Ticks.HighPart = SystemTime.dwHighDateTime;
+        Ticks.QuadPart -= TICKS_1601_TO_1970;
+
+        tv->tv_sec = (long)(Ticks.QuadPart / TICKS_PER_SECOND);
+        tv->tv_usec = (long)((Ticks.QuadPart % TICKS_PER_SECOND) / TICKS_PER_MICROSECOND);
     }
-    tz->tz_minuteswest = _timezone / 60;
-    tz->tz_dsttime = _daylight;
-  }
- 
-  return 0;
+
+    if (tz != NULL)
+    {
+        _tzset();
+        tz->tz_minuteswest = (int)(_timezone / 60);
+        tz->tz_dsttime = _daylight;
+    }
+
+    return 0;
 }

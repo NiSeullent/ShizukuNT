@@ -111,7 +111,7 @@ long int CMSEXPORT cmsfilelength(FILE* f)
 //
 // This is the interface to low-level memory management routines. By default a simple
 // wrapping to malloc/free/realloc is provided, although there is a limit on the max
-// amount of memory that can be reclaimed. This is mostly as a safety feature to prevent
+// amount of memory that can be reclaimed. This is mostly as a safety feature to prevent 
 // bogus or evil code to allocate huge blocks that otherwise lcms would never need.
 
 #ifdef CMS_LARGE_FILE_SUPPORT
@@ -278,7 +278,7 @@ cmsBool  _cmsRegisterMemHandlerPlugin(cmsContext ContextID, cmsPluginBase *Data)
 
     // NULL forces to reset to defaults. In this special case, the defaults are stored in the context structure. 
     // Remaining plug-ins does NOT have any copy in the context structure, but this is somehow special as the
-    // context internal data should be malloc'ed by using those functions.
+    // context internal data should be malloc'ed by using those functions. 
     if (Data == NULL) {
 
        struct _cmsContext_struct* ctx = ( struct _cmsContext_struct*) ContextID;
@@ -590,6 +590,7 @@ static
 void* defMtxCreate(cmsContext id)
 {
     _cmsMutex* ptr_mutex = (_cmsMutex*) _cmsMalloc(id, sizeof(_cmsMutex));
+    if (ptr_mutex == NULL) return NULL;
     _cmsInitMutexPrimitive(ptr_mutex);
     return (void*) ptr_mutex;   
 }
@@ -711,15 +712,15 @@ void CMSEXPORT _cmsUnlockMutex(cmsContext ContextID, void* mtx)
 // Allocate parallelization container.
 void _cmsAllocParallelizationPluginChunk(struct _cmsContext_struct* ctx,
                                          const struct _cmsContext_struct* src)
-{
+{    
     if (src != NULL) {
         void* from = src->chunks[ParallelizationPlugin];
         ctx->chunks[ParallelizationPlugin] = _cmsSubAllocDup(ctx->MemPool, from, sizeof(_cmsParallelizationPluginChunkType));
     }
-    else {
+    else {        
         _cmsParallelizationPluginChunkType ParallelizationPluginChunk = { 0 };
         ctx->chunks[ParallelizationPlugin] = _cmsSubAllocDup(ctx->MemPool, &ParallelizationPluginChunk, sizeof(_cmsParallelizationPluginChunkType));
-    }
+    }         
 }
 
 // Register parallel processing
@@ -733,7 +734,7 @@ cmsBool _cmsRegisterParallelizationPlugin(cmsContext ContextID, cmsPluginBase* D
         // No parallelization routines
         ctx->MaxWorkers = 0;
         ctx->WorkerFlags = 0;
-        ctx->SchedulerFn = NULL;
+        ctx->SchedulerFn = NULL;        
         return TRUE;
     }
 
@@ -743,7 +744,48 @@ cmsBool _cmsRegisterParallelizationPlugin(cmsContext ContextID, cmsPluginBase* D
     ctx->MaxWorkers = Plugin->MaxWorkers;
     ctx->WorkerFlags = Plugin->WorkerFlags;
     ctx->SchedulerFn = Plugin->SchedulerFn;
-
+    
     // All is ok
+    return TRUE;
+}
+
+void _cmsAllocHeaderPluginChunk(struct _cmsContext_struct* ctx,
+                                const struct _cmsContext_struct* src)
+{
+    ctx->chunks[HeaderPlugin] = NULL;
+
+    if (src != NULL && src->chunks[HeaderPlugin] != NULL)
+        ctx->chunks[HeaderPlugin] = _cmsSubAllocDup(ctx->MemPool,
+                                                   src->chunks[HeaderPlugin],
+                                                   sizeof(_cmsHeaderPluginChunkType));
+}
+
+cmsBool _cmsRegisterHeaderPlugin(cmsContext ContextID, cmsPluginBase* Data)
+{
+    cmsPluginHeader* Plugin = (cmsPluginHeader*)Data;
+    struct _cmsContext_struct* ctx = _cmsGetContext(ContextID);
+    _cmsHeaderPluginChunkType* Chunk;
+
+    if (Data == NULL) {
+        ctx->chunks[HeaderPlugin] = NULL;
+        return TRUE;
+    }
+
+    if (Plugin->ReadPtr == NULL || Plugin->WritePtr == NULL)
+        return FALSE;
+
+    Chunk = (_cmsHeaderPluginChunkType*)ctx->chunks[HeaderPlugin];
+    if (Chunk == NULL) {
+        Chunk = (_cmsHeaderPluginChunkType*)
+            _cmsPluginMalloc(ContextID, sizeof(_cmsHeaderPluginChunkType));
+        if (Chunk == NULL)
+            return FALSE;
+
+        ctx->chunks[HeaderPlugin] = Chunk;
+    }
+
+    Chunk->ICCVersion = Plugin->ICCVersion;
+    Chunk->ReadPtr    = Plugin->ReadPtr;
+    Chunk->WritePtr   = Plugin->WritePtr;
     return TRUE;
 }

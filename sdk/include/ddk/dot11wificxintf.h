@@ -158,6 +158,13 @@ typedef struct _WDI_MAC_ADDRESS
 } WDI_MAC_ADDRESS, *PWDI_MAC_ADDRESS;
 typedef const struct _WDI_MAC_ADDRESS * PCWDI_MAC_ADDRESS;
 
+typedef struct _MLO_LINK_INFO
+{
+    UINT32 LinkID;
+    WDI_MAC_ADDRESS StaLinkAddress;
+    WDI_MAC_ADDRESS APLinkAddress;
+} MLO_LINK_INFO, *PMLO_LINK_INFO;
+
 typedef UINT16 WDI_PORT_ID;
 
 #define WDI_PORT_ID_ADAPTER ((UINT16)-1)
@@ -1129,7 +1136,11 @@ RTL_SIZEOF_THROUGH_FIELD(NDIS_MINIPORT_DRIVER_WDI_CHARACTERISTICS, LeCancelIdleN
 
 #define WDI_VERSION_2_0_12                   ((2 << 16) | (0 << 8) | 0xc)
 
-#define WDI_VERSION_LATEST                  WDI_VERSION_2_0_12
+#define WDI_VERSION_2_0_13                  ((2 << 16) | (0 << 8) | 0xd)
+
+#define WDI_VERSION_2_0_14                  ((2 << 16) | (0 << 8) | 0xe)
+
+#define WDI_VERSION_LATEST                  WDI_VERSION_2_0_14
 
 #ifndef NDIS_EXPORTED_ROUTINE
 #  define NDIS_EXPORTED_ROUTINE

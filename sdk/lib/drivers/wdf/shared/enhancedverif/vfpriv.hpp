@@ -24,7 +24,7 @@ Revision History:
 
 #if FX_CORE_MODE==FX_CORE_KERNEL_MODE
 #include "vfprivkm.hpp"
-#else if ((FX_CORE_MODE)==(FX_CORE_USER_MODE))
+#elif ((FX_CORE_MODE)==(FX_CORE_USER_MODE))
 #include "vfprivum.hpp"
 #endif
 
@@ -40,8 +40,8 @@ extern "C" {
     (_type *)VfWdfObjectGetTypedContext(_objectHandle, WDF_GET_CONTEXT_TYPE_INFO(_type));
 
 #define SET_HOOK_IF_CALLBACK_PRESENT(Source, Target, Name)  \
-    if ((Source)-> ## Name != NULL) {      \
-        (Target)-> ## Name = Vf ## Name;   \
+    if ((Source)->Name != NULL) {      \
+        (Target)->Name = Vf ## Name;   \
     }
 
 typedef struct _VF_HOOK_PROCESS_INFO {
