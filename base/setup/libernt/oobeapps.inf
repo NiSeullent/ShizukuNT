@@ -96,6 +96,7 @@ Space = 41
 Arguments = "/install /quiet /norestart"
 Signer = "Microsoft Corporation"
 
+; FIXME: the Wine Mono MSIs write NDP\v4\Full Release 533320 (Windows 11 22H2/23H2), not 533325 (build 26100)
 [WineMono.x86]
 Name = "Wine Mono 11.3.0 (.NET Framework)"
 Url = "https://dl.winehq.org/wine/wine-mono/11.3.0/wine-mono-11.3.0-x86.msi"

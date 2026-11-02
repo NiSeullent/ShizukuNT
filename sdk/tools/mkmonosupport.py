@@ -43,6 +43,9 @@ def directory_path(directories, key):
 
 
 REDIRECTED_CLASSES = ("clsid", "directshow", "interface", "media type", "mediafoundation")
+NDP_V4_FULL_KEY = "software\\microsoft\\net framework setup\\ndp\\v4\\full"
+# .NET Framework 4.8.1 Release that Microsoft documents for every build but 22621, 22631 and 26200, so for build 26100
+NDP_V4_FULL_RELEASE = "#533325"
 
 
 def wow64_key(key):
@@ -125,7 +128,10 @@ def main():
             if is64 and not attributes & 0x100:
                 key = wow64_key(key)
             target = "%s\\%s\\" % (args.system_root, directory_path(directories, components[component]["Directory_"]))
-            lines.append(registry_line(row["Root"], key, row["Name"], row["Value"], (component, target)))
+            value = row["Value"]
+            if row["Key"].lower() == NDP_V4_FULL_KEY and row["Name"] == "Release":
+                value = NDP_V4_FULL_RELEASE
+            lines.append(registry_line(row["Root"], key, row["Name"], value, (component, target)))
         with open(os.path.join(args.out_dir, "monosupport.inf"), "w", encoding="ascii", newline="\r\n") as handle:
             handle.write("\n".join(lines) + "\n")
 
