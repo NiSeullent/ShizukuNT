@@ -629,12 +629,6 @@ DnsIntFreeRecordList(PDNS_RECORD ToDelete)
                 break;
 
             case DNS_TYPE_HINFO:
-                for(i = 0; i < ToDelete->Data.TXT.dwStringCount; i++)
-                    RtlFreeHeap(RtlGetProcessHeap(), 0, ToDelete->Data.TXT.pStringArray[i]);
-
-                RtlFreeHeap(RtlGetProcessHeap(), 0, ToDelete->Data.TXT.pStringArray);
-                break;
-
             case DNS_TYPE_TEXT:
                 for(i = 0; i < ToDelete->Data.TXT.dwStringCount; i++)
                     RtlFreeHeap(RtlGetProcessHeap(), 0, ToDelete->Data.TXT.pStringArray[i]);

@@ -1,5 +1,6 @@
 
 list(APPEND SOURCE
+    DnsContextHandle.c
     DnsQuery.c
     testlist.c)
 

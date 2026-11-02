@@ -11,7 +11,10 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
+#include <ntsecapi.h>
 #include <strsafe.h>
+
+#include "message.h"
 
 #define NDEBUG
 #include <debug.h>
@@ -54,13 +57,6 @@ typedef struct _RESOLVER_CONFIG
     WCHAR Candidates[DNS_MAX_CANDIDATES][DNS_MAX_NAME_BUFFER_LENGTH];
     ULONG CandidateCount;
 } RESOLVER_CONFIG, *PRESOLVER_CONFIG;
-
-typedef struct _RESOLVER_REPLY
-{
-    DNS_STATUS Status;
-    BOOL Final;
-    PDNS_RECORDW Records;
-} RESOLVER_REPLY, *PRESOLVER_REPLY;
 
 static LONG ResolverWinsockStarted;
 
@@ -289,355 +285,6 @@ ResolverLoadConfig(PRESOLVER_CONFIG Config, PCWSTR Name)
 
 static
 INT
-ResolverBuildQuery(PCWSTR Name, WORD Type, WORD Id, BOOL Recursion, PUCHAR Packet, INT Capacity)
-{
-    CHAR Utf8[DNS_MAX_NAME_BUFFER_LENGTH * 3];
-    PCHAR Label, Next;
-    INT Offset = 12;
-
-    if (!WideCharToMultiByte(CP_UTF8, 0, Name, -1, Utf8, sizeof(Utf8), NULL, NULL))
-        return -1;
-
-    Packet[0] = (UCHAR)(Id >> 8);
-    Packet[1] = (UCHAR)Id;
-    Packet[2] = Recursion ? 0x01 : 0x00;
-    Packet[3] = 0;
-    Packet[4] = 0; Packet[5] = 1;
-    Packet[6] = Packet[7] = Packet[8] = Packet[9] = Packet[10] = Packet[11] = 0;
-
-    for (Label = Utf8; *Label; Label = Next)
-    {
-        SIZE_T Length;
-
-        Next = strchr(Label, '.');
-        Length = Next ? (SIZE_T)(Next - Label) : strlen(Label);
-        if (!Length || Length > 63 || Offset + (INT)Length + 1 >= Capacity - 5)
-            return -1;
-        Packet[Offset++] = (UCHAR)Length;
-        RtlCopyMemory(Packet + Offset, Label, Length);
-        Offset += (INT)Length;
-        if (!Next)
-            break;
-        Next++;
-    }
-    Packet[Offset++] = 0;
-    Packet[Offset++] = (UCHAR)(Type >> 8);
-    Packet[Offset++] = (UCHAR)Type;
-    Packet[Offset++] = 0;
-    Packet[Offset++] = 1;
-    return Offset;
-}
-
-static
-INT
-ResolverReadName(const UCHAR *Packet, INT Length, INT Offset, PWSTR Name, INT Count)
-{
-    CHAR Utf8[DNS_MAX_NAME_BUFFER_LENGTH * 3];
-    INT Out = 0, End = -1, Jumps = 0;
-
-    for (;;)
-    {
-        UCHAR Label;
-
-        if (Offset >= Length)
-            return -1;
-        Label = Packet[Offset];
-        if ((Label & 0xC0) == 0xC0)
-        {
-            if (Offset + 1 >= Length || ++Jumps > 32)
-                return -1;
-            if (End < 0)
-                End = Offset + 2;
-            Offset = ((Label & 0x3F) << 8) | Packet[Offset + 1];
-            continue;
-        }
-        if (Label & 0xC0)
-            return -1;
-        Offset++;
-        if (!Label)
-            break;
-        if (Offset + Label > Length || Out + Label + 2 >= (INT)sizeof(Utf8))
-            return -1;
-        if (Out)
-            Utf8[Out++] = '.';
-        RtlCopyMemory(Utf8 + Out, Packet + Offset, Label);
-        Out += Label;
-        Offset += Label;
-    }
-    Utf8[Out] = 0;
-    if (!MultiByteToWideChar(CP_UTF8, 0, Utf8, -1, Name, Count))
-        return -1;
-    return End >= 0 ? End : Offset;
-}
-
-static
-PWSTR
-ResolverDupName(PCWSTR Name)
-{
-    SIZE_T Size = (wcslen(Name) + 1) * sizeof(WCHAR);
-    PWSTR Copy = RtlAllocateHeap(RtlGetProcessHeap(), 0, Size);
-
-    if (Copy)
-        RtlCopyMemory(Copy, Name, Size);
-    return Copy;
-}
-
-static
-BOOL
-ResolverReadDataName(const UCHAR *Packet, INT Length, INT Offset, PWSTR *Result)
-{
-    WCHAR Name[DNS_MAX_NAME_BUFFER_LENGTH];
-
-    if (ResolverReadName(Packet, Length, Offset, Name, ARRAYSIZE(Name)) < 0)
-        return FALSE;
-    *Result = ResolverDupName(Name);
-    return *Result != NULL;
-}
-
-static
-WORD
-ResolverWord(const UCHAR *P)
-{
-    return (WORD)((P[0] << 8) | P[1]);
-}
-
-static
-DWORD
-ResolverDword(const UCHAR *P)
-{
-    return ((DWORD)P[0] << 24) | ((DWORD)P[1] << 16) | ((DWORD)P[2] << 8) | P[3];
-}
-
-static
-PDNS_RECORDW
-ResolverParseRecord(const UCHAR *Packet, INT Length, PCWSTR Owner, WORD Type, DWORD Ttl, INT Data, WORD DataLength)
-{
-    PDNS_RECORDW Record;
-    SIZE_T Size = sizeof(DNS_RECORDW);
-    DWORD Strings = 0;
-    BOOL Ok = TRUE;
-
-    if (Type == DNS_TYPE_TEXT)
-    {
-        INT Offset = Data;
-
-        while (Offset < Data + DataLength)
-        {
-            Offset += Packet[Offset] + 1;
-            Strings++;
-        }
-        if (Offset != Data + DataLength || !Strings)
-            return NULL;
-        Size = FIELD_OFFSET(DNS_RECORDW, Data.TXT.pStringArray[Strings]);
-    }
-
-    Record = RtlAllocateHeap(RtlGetProcessHeap(), HEAP_ZERO_MEMORY, max(Size, sizeof(DNS_RECORDW)));
-    if (!Record)
-        return NULL;
-    Record->pName = ResolverDupName(Owner);
-    Record->wType = Type;
-    Record->Flags.S.Section = DnsSectionAnswer;
-    Record->Flags.S.CharSet = DnsCharSetUnicode;
-    Record->dwTtl = Ttl;
-    if (!Record->pName)
-        Ok = FALSE;
-
-    switch (Type)
-    {
-    case DNS_TYPE_A:
-        Ok = Ok && DataLength == 4;
-        if (Ok)
-            RtlCopyMemory(&Record->Data.A.IpAddress, Packet + Data, 4);
-        Record->wDataLength = sizeof(DNS_A_DATA);
-        break;
-
-    case DNS_TYPE_AAAA:
-        Ok = Ok && DataLength == 16;
-        if (Ok)
-            RtlCopyMemory(&Record->Data.AAAA.Ip6Address, Packet + Data, 16);
-        Record->wDataLength = sizeof(DNS_AAAA_DATA);
-        break;
-
-    case DNS_TYPE_CNAME:
-    case DNS_TYPE_PTR:
-    case DNS_TYPE_NS:
-        Ok = Ok && ResolverReadDataName(Packet, Length, Data, &Record->Data.PTR.pNameHost);
-        Record->wDataLength = sizeof(DNS_PTR_DATAW);
-        break;
-
-    case DNS_TYPE_MX:
-        Ok = Ok && DataLength > 2 && ResolverReadDataName(Packet, Length, Data + 2, &Record->Data.MX.pNameExchange);
-        if (Ok)
-            Record->Data.MX.wPreference = ResolverWord(Packet + Data);
-        Record->wDataLength = sizeof(DNS_MX_DATAW);
-        break;
-
-    case DNS_TYPE_SRV:
-        Ok = Ok && DataLength > 6 && ResolverReadDataName(Packet, Length, Data + 6, &Record->Data.SRV.pNameTarget);
-        if (Ok)
-        {
-            Record->Data.SRV.wPriority = ResolverWord(Packet + Data);
-            Record->Data.SRV.wWeight = ResolverWord(Packet + Data + 2);
-            Record->Data.SRV.wPort = ResolverWord(Packet + Data + 4);
-        }
-        Record->wDataLength = sizeof(DNS_SRV_DATAW);
-        break;
-
-    case DNS_TYPE_SOA:
-    {
-        WCHAR Name[DNS_MAX_NAME_BUFFER_LENGTH];
-        INT Offset = ResolverReadName(Packet, Length, Data, Name, ARRAYSIZE(Name));
-
-        Ok = Ok && Offset > 0 && (Record->Data.SOA.pNamePrimaryServer = ResolverDupName(Name)) != NULL;
-        Offset = Ok ? ResolverReadName(Packet, Length, Offset, Name, ARRAYSIZE(Name)) : -1;
-        Ok = Ok && Offset > 0 && Offset + 20 <= Data + DataLength &&
-             (Record->Data.SOA.pNameAdministrator = ResolverDupName(Name)) != NULL;
-        if (Ok)
-        {
-            Record->Data.SOA.dwSerialNo = ResolverDword(Packet + Offset);
-            Record->Data.SOA.dwRefresh = ResolverDword(Packet + Offset + 4);
-            Record->Data.SOA.dwRetry = ResolverDword(Packet + Offset + 8);
-            Record->Data.SOA.dwExpire = ResolverDword(Packet + Offset + 12);
-            Record->Data.SOA.dwDefaultTtl = ResolverDword(Packet + Offset + 16);
-        }
-        Record->wDataLength = sizeof(DNS_SOA_DATAW);
-        break;
-    }
-
-    case DNS_TYPE_TEXT:
-    {
-        INT Offset = Data;
-        DWORD i;
-
-        Record->Data.TXT.dwStringCount = Strings;
-        for (i = 0; Ok && i < Strings; i++)
-        {
-            UCHAR StringLength = Packet[Offset++];
-            INT Chars = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)Packet + Offset, StringLength, NULL, 0);
-            PWSTR String = RtlAllocateHeap(RtlGetProcessHeap(), 0, (Chars + 1) * sizeof(WCHAR));
-
-            if (!String)
-            {
-                Ok = FALSE;
-                break;
-            }
-            MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)Packet + Offset, StringLength, String, Chars);
-            String[Chars] = UNICODE_NULL;
-            Record->Data.TXT.pStringArray[i] = String;
-            Offset += StringLength;
-        }
-        Record->wDataLength = (WORD)(FIELD_OFFSET(DNS_TXT_DATAW, pStringArray[Strings]));
-        break;
-    }
-
-    default:
-        Ok = FALSE;
-        break;
-    }
-
-    if (!Ok)
-    {
-        Record->pNext = NULL;
-        DnsIntFreeRecordList((PDNS_RECORD)Record);
-        return NULL;
-    }
-    return Record;
-}
-
-static
-VOID
-ResolverParseReply(const UCHAR *Packet, INT Length, WORD Id, PCWSTR Name, WORD Type, PRESOLVER_REPLY Reply)
-{
-    WCHAR Owner[DNS_MAX_NAME_BUFFER_LENGTH], Target[DNS_MAX_NAME_BUFFER_LENGTH];
-    PDNS_RECORDW *Tail = &Reply->Records;
-    WORD Questions, Answers, i;
-    INT Offset;
-    BOOL Matched = FALSE;
-
-    Reply->Status = ERROR_SUCCESS;
-    Reply->Final = FALSE;
-    Reply->Records = NULL;
-
-    if (Length < 12 || ResolverWord(Packet) != Id || !(Packet[2] & 0x80))
-        return;
-
-    Questions = ResolverWord(Packet + 4);
-    Answers = ResolverWord(Packet + 6);
-    Offset = 12;
-    if (Questions > 1 || (Questions == 0 && !(Packet[3] & 0x0F)))
-        return;
-    if (Questions == 1)
-    {
-        Offset = ResolverReadName(Packet, Length, Offset, Owner, ARRAYSIZE(Owner));
-        if (Offset < 0 || Offset + 4 > Length || _wcsicmp(Owner, Name) || ResolverWord(Packet + Offset) != Type)
-            return;
-        Offset += 4;
-    }
-
-    switch (Packet[3] & 0x0F)
-    {
-    case 0:
-        break;
-    case 3:
-        Reply->Status = DNS_ERROR_RCODE_NAME_ERROR;
-        Reply->Final = TRUE;
-        return;
-    case 1:
-        Reply->Status = DNS_ERROR_RCODE_FORMAT_ERROR;
-        return;
-    case 5:
-        Reply->Status = DNS_ERROR_RCODE_REFUSED;
-        return;
-    default:
-        Reply->Status = DNS_ERROR_RCODE_SERVER_FAILURE;
-        return;
-    }
-
-    StringCchCopyW(Target, ARRAYSIZE(Target), Name);
-    for (i = 0; i < Answers; i++)
-    {
-        WORD RecordType, Class, DataLength;
-        DWORD Ttl;
-        PDNS_RECORDW Record;
-
-        Offset = ResolverReadName(Packet, Length, Offset, Owner, ARRAYSIZE(Owner));
-        if (Offset < 0 || Offset + 10 > Length)
-            break;
-        RecordType = ResolverWord(Packet + Offset);
-        Class = ResolverWord(Packet + Offset + 2);
-        Ttl = ResolverDword(Packet + Offset + 4);
-        DataLength = ResolverWord(Packet + Offset + 8);
-        Offset += 10;
-        if (Offset + DataLength > Length)
-            break;
-
-        if (Class == 1 && (RecordType == Type || RecordType == DNS_TYPE_CNAME))
-        {
-            Record = ResolverParseRecord(Packet, Length, Owner, RecordType, Ttl, Offset, DataLength);
-            if (Record)
-            {
-                *Tail = Record;
-                Tail = &Record->pNext;
-                if (RecordType == DNS_TYPE_CNAME && !_wcsicmp(Owner, Target))
-                    StringCchCopyW(Target, ARRAYSIZE(Target), Record->Data.CNAME.pNameHost);
-                if (RecordType == Type)
-                    Matched = TRUE;
-            }
-        }
-        Offset += DataLength;
-    }
-
-    Reply->Final = TRUE;
-    if (!Matched)
-    {
-        DnsIntFreeRecordList((PDNS_RECORD)Reply->Records);
-        Reply->Records = NULL;
-        Reply->Status = DNS_INFO_NO_RECORDS;
-    }
-}
-
-static
-INT
 ResolverSockaddrLength(const SOCKADDR_INET *Address)
 {
     return Address->si_family == AF_INET6 ? sizeof(SOCKADDR_IN6) : sizeof(SOCKADDR_IN);
@@ -797,7 +444,8 @@ ResolverQueryName(PRESOLVER_CONFIG Config, PCWSTR Name, WORD Type, DWORD Options
         Config->Servers[i].Failed = FALSE;
     }
 
-    Id = (WORD)(GetTickCount() ^ (GetCurrentThreadId() << 5) ^ (ULONG_PTR)Name);
+    if (!RtlGenRandom(&Id, sizeof(Id)))
+        return ERROR_INTERNAL_ERROR;
     QueryLength = ResolverBuildQuery(Name, Type, Id, !(Options & DNS_QUERY_NO_RECURSION), Query, sizeof(Query));
     if (QueryLength < 0)
         return ERROR_INVALID_NAME;
@@ -847,7 +495,7 @@ ResolverQueryName(PRESOLVER_CONFIG Config, PCWSTR Name, WORD Type, DWORD Options
                     continue;
 
                 ResolverParseReply(Packet, Received, Id, Name, Type, &Reply);
-                if (Reply.Final && (Packet[2] & 0x02))
+                if ((Reply.Final || Reply.Status == DNS_ERROR_BAD_PACKET) && (Packet[2] & 0x02))
                 {
                     DnsIntFreeRecordList((PDNS_RECORD)Reply.Records);
                     Reply.Records = NULL;
@@ -966,7 +614,8 @@ ResolverLlmnrQuery(PCWSTR Name, WORD Type, PDNS_RECORDW *Result)
     if (!ResolverLlmnrLinks(Links4, &Count4, Links6, &Count6))
         return ERROR_INVALID_NAME;
 
-    Id = (WORD)(GetTickCount() ^ (GetCurrentThreadId() << 7) ^ (ULONG_PTR)Name ^ Type);
+    if (!RtlGenRandom(&Id, sizeof(Id)))
+        return ERROR_INTERNAL_ERROR;
     QueryLength = ResolverBuildQuery(Name, Type, Id, FALSE, Query, sizeof(Query));
     if (QueryLength < 0)
         return ERROR_INVALID_NAME;
