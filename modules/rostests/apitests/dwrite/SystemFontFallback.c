@@ -1,8 +1,9 @@
 /*
  * PROJECT:     LiberNT API tests
  * LICENSE:     GPL-3.0-or-later (https://spdx.org/licenses/GPL-3.0-or-later)
- * PURPOSE:     Tests that the system font fallback maps Japanese text
+ * PURPOSE:     Tests that the system font fallback maps Japanese and Korean text
  * COPYRIGHT:   Copyright 2026 mikuta0407 <mikuta0407@mikuta0407.net>
+ *              Copyright 2026 NiSeullent <coolfriendsbz@gmail.com>
  */
 
 #define COBJMACROS
@@ -170,6 +171,8 @@ static void TestMapCharacters(IDWriteFontFallback *pFallback, const WCHAR *pszTe
 START_TEST(SystemFontFallback)
 {
     static const WCHAR szJapanese[] = L"\x65e5\x672c\x8a9e\x306e\x30c6\x30ad\x30b9\x30c8";
+    static const WCHAR szKorean[] = L"\xd55c\xad6d\xc5b4\xd14d\xc2a4\xd2b8\x3131\x314f";
+    static const WCHAR szHanja[] = L"\x97d3\x570b\x8a9e";
     IDWriteFactory2 *pFactory = NULL;
     IDWriteFontFallback *pFallback = NULL;
     HRESULT hr;
@@ -185,6 +188,10 @@ START_TEST(SystemFontFallback)
     {
         TestMapCharacters(pFallback, szJapanese, L"ja-JP");
         TestMapCharacters(pFallback, szJapanese, L"en-US");
+        TestMapCharacters(pFallback, szKorean, L"ko-KR");
+        TestMapCharacters(pFallback, szKorean, L"en-US");
+        TestMapCharacters(pFallback, szHanja, L"ko-KR");
+        TestMapCharacters(pFallback, szHanja, L"ko");
         IDWriteFontFallback_Release(pFallback);
     }
     IDWriteFactory2_Release(pFactory);
