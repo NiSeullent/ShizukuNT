@@ -1,0 +1,104 @@
+PROJECT:     LiberNT TI-RPC library
+LICENSE:     LGPL-2.1-or-later (https://spdx.org/licenses/LGPL-2.1-or-later)
+PURPOSE:     Provenance and licence record of the libtirpc import
+COPYRIGHT:   Copyright 2026 NiSeullent <coolfriendsbz@gmail.com>
+
+libtirpc in LiberNT
+===================
+
+This directory holds the Windows port of libtirpc made by the CITI group of
+the University of Michigan for the "NFSv4.1 Client for Windows". It builds
+libtirpc.dll, which nfsd (base/services/nfsd) uses for its RPC client.
+
+Upstream
+--------
+
+Windows port:  git://citi-git.citi.umich.edu/projects/ms-nfs41-client.git
+               (maintained mirror: https://github.com/kofemann/ms-nfs41-client)
+Base commit:   bbb1ed696c3ddf609db84822d88d32f75c3fa1af (2012-03-19), the
+               last change to libtirpc/ before the 2017 ReactOS import.
+
+The port was taken from Linux libtirpc
+(git://git.linux-nfs.org/projects/steved/libtirpc.git) between tags
+libtirpc-0-2-0 (2009-05-28) and libtirpc-0-2-1 (2009-11-30): it carries the
+Sun BSD headers of commit 775078e1201b9d218793f397d5dafd4ea89a5e02 but none
+of the 2010 licence fixes listed below. VERSION still reads 0.1.11 because
+upstream never updated that file.
+
+Licences
+--------
+
+* Sun RPC code: BSD-3-Clause, after Sun relicensed it in 2009 (Linux
+  libtirpc 775078e1) and Oracle relicensed the remaining SISSL code in 2010.
+* COPYING: BSD-3-Clause (Bull S.A.). It applies, as it does upstream, to the
+  files that carry no notice of their own: src/mt_misc.c, tirpc/netconfig.h,
+  tirpc/getpeereid.h and the upstream build and documentation files.
+* FreeBSD/NetBSD-derived headers: BSD-2-Clause or BSD-3-Clause, as stated in
+  each file. src/asprintf.c: ISC.
+* Changes of the Windows port: LGPL-2.1-or-later (see COPYING.LIB at the root
+  of the tree), as stated in each file the port modified. The port's changes
+  to files without a notice of their own fall under the same licence.
+* Files written for LiberNT: LGPL-2.1-or-later, as stated in each file.
+
+The Sun Industry Standards Source License 1.0 no longer applies to any file.
+
+Licence clean-up
+----------------
+
+* COPYING: replaced with the upstream text, which dropped the SISSL 1.0 in
+  4f4ada08b780c27398b0749b7965fd248a7f3b99 (2010-08-30, "Relicense these
+  SISSL files to 3 clause BSD", first released in 0.2.2) and is unchanged
+  up to 1.3.7.
+* src/clnt_generic.c, src/rpcb_clnt.c, tirpc/rpc/clnt.h: these files hold
+  code that was under the SISSL (upstream restored that attribution in
+  ea26246defdf9aace0dedca1a5cc9104ba1d3936). Their licence block now reads
+  as in 4f4ada08: Copyright (c) 2010, Oracle America, Inc., BSD-3-Clause.
+* tirpc/reentrant.h: advertising and endorsement clauses removed as in
+  upstream ba3945e2c7828be7926fd55d50f03db97dc7e022, following the NetBSD
+  Foundation's change to the 2-clause licence (FreeBSD carries the same
+  header as BSD-2-Clause).
+* tirpc/libc_private.h and tirpc/spinlock.h (BSD with advertising clause,
+  incompatible with the GPL) removed. Nothing in this build used them;
+  upstream emptied them in ba3945e2.
+* tirpc/misc/queue.h (no notice, unused, removed upstream in
+  ce76578b7a4cd11df77405c8499dd52169beb7ce) and src/winstubs.c (no notice,
+  commented-out code only) removed.
+* tirpc/rpcsvc/nis.h: Oracle BSD-3-Clause header restored. The definitions
+  are an excerpt of Sun's nis_object.x (glibc nis/rpcsvc/nis_object.x,
+  Copyright (c) 2010, Oracle America, Inc.); the header text is the one
+  libtirpc 1.3.7 src/nis.h carries for the same definitions.
+* Rewritten clean-room from their interfaces: src/gettimeofday.c (upstream
+  "XXX NEED Copyright info"; POSIX gettimeofday() and the Microsoft FILETIME
+  and CRT time-zone documentation), tirpc/rpc/clnt_stat.h (a Sun copyright
+  line without licence terms in Linux libtirpc and FreeBSD alike; values 0
+  to 25 match glibc sunrpc/rpc/clnt.h, Oracle BSD-3-Clause, and 26 to 28
+  keep the existing LiberNT ABI) and precomp.h (ReactOS-local, no notice).
+* src/auth_time.c (a Sun copyright line without licence terms) is no longer
+  built: only the AUTH_DES code, which is not built either, calls it.
+
+Sources kept but not built
+--------------------------
+
+auth_des.c, auth_gss.c, auth_time.c, authgss_prot.c, crypt_client.c,
+des_crypt.c, svc_auth_des.c and svc_auth_gss.c are not part of
+libtirpc.dll. src/crypt_client.c, tirpc/rpcsvc/crypt.x and the rpcgen output
+tirpc/rpcsvc/crypt.h are under the 4-clause BSD licence of Bill Paul, which
+is incompatible with the GPL: do not build them without a clean-room
+replacement. tirpc/misc/socket.h carries the University of California
+advertising clause, which the University rescinded in 1999; it is unused.
+
+The upstream build files (Makefile.am, configure.ac, autogen.sh, bootstrap,
+libtirpc.pc.in, src/sources, the .def files, libtirpc/libtirpc.rc and
+libtirpc/resource.h) and the man and doc directories are not used by the
+LiberNT build.
+
+Local changes
+-------------
+
+* CMakeLists.txt, libtirpc/libtirpc.spec and libtirpc/libtirpc_ros.rc build
+  the DLL; __REACTOS__ blocks adapt the sources to the LiberNT CRT and
+  headers.
+* tirpc/reentrant.h releases a reader/writer lock with rwlock_rdunlock() or
+  rwlock_wrunlock() according to how it was taken, as upstream did in
+  51882a215e027699983a5d66b06fa3a63c3691a3, instead of always releasing the
+  SRW lock as exclusive.

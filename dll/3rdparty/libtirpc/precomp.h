@@ -1,17 +1,28 @@
+/*
+ * PROJECT:     LiberNT TI-RPC library
+ * LICENSE:     LGPL-2.1-or-later (https://spdx.org/licenses/LGPL-2.1-or-later)
+ * PURPOSE:     Precompiled header for the TI-RPC library
+ * COPYRIGHT:   Copyright 2026 NiSeullent <coolfriendsbz@gmail.com>
+ */
+
 #ifndef _LIBTIRPC_PRECOMP_H_
 #define _LIBTIRPC_PRECOMP_H_
 
 #include <wintirpc.h>
+
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
-#include <errno.h>
-#include <reentrant.h>
 #include <time.h>
-#include <fcntl.h>
+#include <sys/types.h>
+
+#include <reentrant.h>
 #include <netconfig.h>
+#include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/auth.h>
 #include <rpc/auth_sspi.h>
@@ -22,11 +33,8 @@
 #include <rpc/raw.h>
 #include <rpc/rpcb_prot.h>
 #include <rpc/svc.h>
-#include <rpc/types.h>
-#include <sys/types.h>
 #include <rpc/pmap_prot.h>
 #include <rpc/pmap_clnt.h>
 #include <rpc/pmap_rmt.h>
-#include <libc_private.h>
 
-#endif /* _LIBTIRPC_PRECOMP_H_ */
+#endif

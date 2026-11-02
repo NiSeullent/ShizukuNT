@@ -47,7 +47,6 @@
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 #endif
-#include <libc_private.h>
 
 /*
  * Internet version.
