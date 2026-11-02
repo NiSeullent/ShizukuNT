@@ -5,6 +5,13 @@ add_subdirectory(cx)
 
 remove_definitions(-D_WIN32_WINNT=${REACTOS_TARGET_NT} -DWINVER=${REACTOS_TARGET_NT})
 
+set(WDF_MAJOR_VERSION 1)
+set(WDF_MINOR_VERSION 33)
+set(WDF_BUILD_NUMBER 22000)
+math(EXPR WDF_MAJOR_VERSION_HEX "${WDF_MAJOR_VERSION}" OUTPUT_FORMAT HEXADECIMAL)
+math(EXPR WDF_MINOR_VERSION_HEX "${WDF_MINOR_VERSION}" OUTPUT_FORMAT HEXADECIMAL)
+math(EXPR WDF_BUILD_NUMBER_HEX "${WDF_BUILD_NUMBER}" OUTPUT_FORMAT HEXADECIMAL)
+
 list(APPEND SOURCE_SHARED
     shared/core/fxcxdeviceinit.cpp
     shared/core/fxcxdeviceinitapi.cpp
@@ -141,6 +148,9 @@ list(APPEND SOURCE_KM
     kmdf/src/support/fxrelateddevice.cpp
     kmdf/src/support/fxrelateddevicelist.cpp
     kmdf/src/support/probeandlock.c
+    shared/enhancedverif/verifier.cpp
+    shared/enhancedverif/vfeventhooks.cpp
+    shared/enhancedverif/km/vfwdfdynamics.cpp
     shared/core/km/fxdeviceapikm.cpp
     shared/core/km/fxdevicebasekm.cpp
     shared/core/km/fxdeviceinitkm.cpp
@@ -191,12 +201,13 @@ add_library(wdf01000 SHARED ${SOURCE_SHARED} ${SOURCE_KM} wdf01000.rc)
 set_module_type(wdf01000 kernelmodedriver)
 
 add_cd_file(TARGET wdf01000 DESTINATION reactos/system32/drivers NO_CAB FOR all)
-add_registry_inf(wdf01000_reg.inf)
+configure_file(wdf01000_reg.inf "${CMAKE_CURRENT_BINARY_DIR}/configured/wdf01000_reg.inf" @ONLY)
+add_registry_inf("${CMAKE_CURRENT_BINARY_DIR}/configured/wdf01000_reg.inf")
 
 target_compile_definitions(wdf01000
     PRIVATE FX_CORE_MODE=1 FX_CORE_KERNEL_MODE=1 WDF_EVERYTHING_ALWAYS_AVAILABLE
-    PRIVATE __WDF_MAJOR_VERSION=1 __WDF_MINOR_VERSION=33 __WDF_BUILD_NUMBER=22000
-    PRIVATE __WDF_MAJOR_VERSION_STRING=01 __WDF_MINOR_VERSION_STRING=33
+    PRIVATE __WDF_MAJOR_VERSION=${WDF_MAJOR_VERSION} __WDF_MINOR_VERSION=${WDF_MINOR_VERSION} __WDF_BUILD_NUMBER=${WDF_BUILD_NUMBER}
+    PRIVATE __WDF_MAJOR_VERSION_STRING=0${WDF_MAJOR_VERSION} __WDF_MINOR_VERSION_STRING=${WDF_MINOR_VERSION}
     # wdf01000 is primarily 3rd party code, and we cannot control what crap vendor drivers do
     PRIVATE NO_KERNEL_LIST_ENTRY_CHECKS)
 target_compile_options(wdf01000 PUBLIC # NTDDI_WINBLUE
@@ -218,6 +229,8 @@ target_include_directories(wdf01000
         shared/irphandlers # irphandlerspriv.hpp
         shared/irphandlers/pnp # pnppriv.hpp
         shared/irphandlers/pnp/km # pnpprivkm.hpp
+        shared/enhancedverif
+        shared/enhancedverif/km
     )
 
 target_link_libraries(wdf01000 aux_klib usbdex wdmsec ntoskrnl_vista ${PSEH_LIB})

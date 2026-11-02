@@ -13,6 +13,7 @@ add_subdirectory(ntos_io)
 add_subdirectory(ntos_mm)
 add_subdirectory(ntos_po)
 add_subdirectory(tcpip)
+add_subdirectory(wdf)
 add_subdirectory(wfp)
 
 list(APPEND COMMON_SOURCE
@@ -515,6 +516,7 @@ list(APPEND KMTEST_SOURCE
     ntos_po/PoIrp_user.c
     ntos_po/PoFxState_user.c
     tcpip/TcpIp_user.c
+    wdf/WdfBind_user.c
     wfp/wfp_listen/wfp_listen_user.c
     wfp/wfp_tcp/wfp_tcp_user.c
     wfp/wfp_udp/wfp_udp_user.c
@@ -559,6 +561,7 @@ add_dependencies(kmtest_drivers
     ntcreatesection_drv
     poirp_drv
     tcpip_drv
+    wdfbind_drv
     cccopyread_drv
     cccopywrite_drv
     ccmapdata_drv

@@ -20,8 +20,7 @@ typedef enum _WDFFUNCENUM_NUMENTRIES {
 //
 // This will cause inclusion of VfWdfFunctions table implementation from header
 //
-// TODO: Uncomment when implement verified functions table
-//#define  VF_FX_DYNAMICS_GENERATE_TABLE   1
+#define  VF_FX_DYNAMICS_GENERATE_TABLE   1
 
 //
 // Compute the length based on the max. service name length and the rest of the
@@ -520,19 +519,17 @@ FxLibraryCommonRegisterClient(
         }
         else {
             __Print((LITERAL(WDF_LIBRARY_REGISTER_CLIENT)
-                     "Verifier functions table NOT IMPLEMENTED\n"));
-
-            DbgBreakPoint();
-
-            __Print((LITERAL(WDF_LIBRARY_REGISTER_CLIENT)
                      ": Enhanced Verification is ON\n"));
 
-#ifndef __REACTOS__
             LockVerifierSection(fxDriverGlobals, ClientInfo->RegistryPath);
 
+#ifndef __REACTOS__
             if (Microsoft_Windows_DriverFrameworks_KernelMode_PerformanceHandle == NULL) {
                 EventRegisterMicrosoft_Windows_DriverFrameworks_KernelMode_Performance();
             }
+#else
+            /* TODO: register the DriverFrameworks-KernelMode-Performance ETW provider; its manifest is not public */
+#endif // __REACTOS__
 
             //
             // Enhanced verification is on. Return verifier function table
@@ -552,7 +549,6 @@ FxLibraryCommonRegisterClient(
                 //
                 *((WDFFUNC**) Info->FuncTable) = (WDFFUNC*) &VfWdfVersion.Functions;
             }
-#endif // __REACTOS__
         }
 
         status = STATUS_SUCCESS;
@@ -610,7 +606,8 @@ FxLibraryCommonUnregisterClient(
         //
         // unlock enhanced-verifier image sections
         //
-        if (IsFxVerifierFunctionTableHooking(pFxDriverGlobals)) {
+        if (IsFxVerifierFunctionTableHooking(pFxDriverGlobals) ||
+            IsFxPerformanceAnalysis(pFxDriverGlobals)) {
             UnlockVerifierSection(pFxDriverGlobals);
         }
 

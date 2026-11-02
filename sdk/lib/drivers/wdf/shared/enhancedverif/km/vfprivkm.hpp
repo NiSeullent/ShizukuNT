@@ -28,6 +28,7 @@ extern "C" {
 }
 
 #include "fx.hpp"
+#include "vfperfeventskm.h"
 
 extern "C" {
 
