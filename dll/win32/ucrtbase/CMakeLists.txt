@@ -13,6 +13,35 @@ add_compile_definitions(
     CRTDLL
 )
 
+list(APPEND UCRTBASE_MUSL_SOURCE
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__cexp.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__cos.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__cosdf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__exp.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__sin.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/__sindf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/carg.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/cargf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/cexp.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/ilogb.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/ilogbf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/lgamma.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/lgamma_r.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/lgammaf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/lgammaf_r.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/nan.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/nanf.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/remquo.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/remquof.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/signgam.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/tgamma.c
+    ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/musl/tgammaf.c
+)
+
+if(NOT MSVC)
+    set_source_files_properties(${UCRTBASE_MUSL_SOURCE} math.c PROPERTIES COMPILE_OPTIONS "-fno-builtin")
+endif()
+
 add_library(ucrtbase SHARED
     printf.c
     stubs.c
@@ -41,12 +70,19 @@ add_library(ucrtbase SHARED
     ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/remainderf.c
     ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/rint.c
     ${REACTOS_SOURCE_DIR}/sdk/lib/crt/math/rintf.c
+    ${UCRTBASE_MUSL_SOURCE}
+    math.c
+    misc.c
     ucrtbase_stubs.c
     ucrtbase.def
     ucrtbase.rc
 )
 
-if(NOT ARCH STREQUAL "amd64" AND NOT ARCH STREQUAL "i386")
+if(ARCH STREQUAL "amd64")
+    target_sources(ucrtbase PRIVATE except1.c amd64/handler4_initializer.c amd64/math_amd64.c)
+elseif(ARCH STREQUAL "i386")
+    target_sources(ucrtbase PRIVATE except1.c i386/math_i386.c)
+else()
     target_sources(ucrtbase PRIVATE fma3_unavailable.c)
 endif()
 
@@ -66,6 +102,7 @@ set_entrypoint(ucrtbase __acrt_DllMain 12)
 target_link_libraries(ucrtbase
     ucrt
     msvcrt_undname_ucrt
+    msvcrt_handler4_ucrt
     msvcrt_shared
     crtmath
     vcruntime

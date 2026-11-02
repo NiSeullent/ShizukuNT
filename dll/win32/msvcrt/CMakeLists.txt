@@ -148,6 +148,10 @@ add_library(msvcrt_undname_ucrt undname.c)
 target_compile_definitions(msvcrt_undname_ucrt PRIVATE _MSVCR_VER=0 __UCRTSUPPORT__ _UCRT)
 add_dependencies(msvcrt_undname_ucrt psdk)
 
+add_library(msvcrt_handler4_ucrt handler4.c)
+target_compile_definitions(msvcrt_handler4_ucrt PRIVATE _MSVCR_VER=140 __UCRTSUPPORT__)
+add_dependencies(msvcrt_handler4_ucrt psdk)
+
 ###############################################################################
 # A static library shared between msvcrt.dll msvcrt20.dll and msvcrt40.dll
 ###############################################################################

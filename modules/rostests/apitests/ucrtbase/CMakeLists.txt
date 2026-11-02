@@ -6,6 +6,7 @@ set_property(DIRECTORY . PROPERTY INCLUDE_DIRECTORIES ${INCLUDE_DIRS})
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/ucrt)
 
 list(APPEND SOURCE
+    C99Complex.c
     C99Math.c
     ../crt/_finite.c
     ../crt/_isnan.c
@@ -25,6 +26,7 @@ list(APPEND SOURCE
     ../crt/system.c
     ../crt/tan.c
     ../crt/wctomb.c
+    VcruntimeExports.c
     testlist.c
 )
 

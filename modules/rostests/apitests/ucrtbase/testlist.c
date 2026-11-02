@@ -3,6 +3,7 @@
 #define STANDALONE
 #include <wine/test.h>
 
+extern void func_C99Complex(void);
 extern void func_C99Math(void);
 extern void func__finite(void);
 extern void func__isnan(void);
@@ -21,11 +22,13 @@ extern void func_sin(void);
 extern void func_sqrt(void);
 extern void func_system(void);
 extern void func_tan(void);
+extern void func_VcruntimeExports(void);
 extern void func_wctomb(void);
 
 
 const struct test winetest_testlist[] =
 {
+    { "C99Complex", func_C99Complex },
     { "C99Math", func_C99Math },
     { "_finite", func__finite },
     { "_isnan", func__isnan },
@@ -44,6 +47,7 @@ const struct test winetest_testlist[] =
     { "sqrt", func_sqrt },
     { "system", func_system },
     { "tan", func_tan },
+    { "VcruntimeExports", func_VcruntimeExports },
     { "wctomb", func_wctomb },
 
     { 0, 0 }
