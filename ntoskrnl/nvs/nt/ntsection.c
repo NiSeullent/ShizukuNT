@@ -20,7 +20,16 @@ POBJECT_TYPE MmSectionObjectType;
 
 #define MI_CONTROL_LOCKS 64
 
+typedef struct _MI_IMAGE_BUILD
+{
+    LIST_ENTRY Links;
+    PSECTION_OBJECT_POINTERS Pointers;
+    KEVENT Done;
+    LONG References;
+} MI_IMAGE_BUILD, *PMI_IMAGE_BUILD;
+
 static MI_RWLOCK MiControlLocks[MI_CONTROL_LOCKS];
+static LIST_ENTRY MiImageBuilds[MI_CONTROL_LOCKS];
 static MI_MUTEX MiImageWindowLock;
 static MI_IMAGE_WINDOW MiImageWindows[8];
 static ULONG MiImageWindowCount;
@@ -91,13 +100,49 @@ MiFreeControlArea(
 }
 
 static
-PMI_RWLOCK
-MiControlLockFor(
+ULONG
+MiControlIndexFor(
     _In_ PSECTION_OBJECT_POINTERS Pointers)
 {
     ULONG_PTR Value = (ULONG_PTR)Pointers >> 4;
 
-    return &MiControlLocks[(Value ^ (Value >> 6) ^ (Value >> 12)) & (MI_CONTROL_LOCKS - 1)];
+    return (ULONG)((Value ^ (Value >> 6) ^ (Value >> 12)) & (MI_CONTROL_LOCKS - 1));
+}
+
+static
+PMI_RWLOCK
+MiControlLockFor(
+    _In_ PSECTION_OBJECT_POINTERS Pointers)
+{
+    return &MiControlLocks[MiControlIndexFor(Pointers)];
+}
+
+static
+PMI_IMAGE_BUILD
+MiFindImageBuild(
+    _In_ PSECTION_OBJECT_POINTERS Pointers)
+{
+    PLIST_ENTRY Head = &MiImageBuilds[MiControlIndexFor(Pointers)];
+    PLIST_ENTRY Entry;
+
+    for (Entry = Head->Flink; Entry != Head; Entry = Entry->Flink)
+    {
+        PMI_IMAGE_BUILD Build = CONTAINING_RECORD(Entry, MI_IMAGE_BUILD, Links);
+
+        if (Build->Pointers == Pointers)
+            return Build;
+    }
+
+    return NULL;
+}
+
+static
+VOID
+MiDereferenceImageBuild(
+    _Inout_ PMI_IMAGE_BUILD Build)
+{
+    if (InterlockedDecrement(&Build->References) == 0)
+        ExFreePoolWithTag(Build, 'bImM');
 }
 
 static
@@ -553,6 +598,7 @@ MiImageRelocationBytes(
             Pages[Page] = ExAllocatePoolWithTag(PagedPool, PAGE_SIZE, 'rImM');
             if (Pages[Page] == NULL)
                 return STATUS_INSUFFICIENT_RESOURCES;
+            (VOID)MiSegmentFaultIn(Control->Segment, Page, MI_MAX_FILE_IO_PAGES - 1);
             Status = MiReadImageSegment(Control->Segment, (ULONG64)Page << PAGE_SHIFT, Pages[Page], PAGE_SIZE);
             if (!NT_SUCCESS(Status))
                 return Status;
@@ -1221,7 +1267,8 @@ MiCreateImageControlArea(
     PSECTION_OBJECT_POINTERS Pointers = FileObject->SectionObjectPointer;
     PMI_RWLOCK ControlLock;
     PMI_CONTROL_AREA Control;
-    PMI_CONTROL_AREA Existing;
+    PMI_CONTROL_AREA Existing = NULL;
+    PMI_IMAGE_BUILD Build;
     LARGE_INTEGER FileSize;
     NTSTATUS Status;
 
@@ -1250,52 +1297,83 @@ MiCreateImageControlArea(
 
     MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
 
-    while (!MiLookupControlArea(Pointers, TRUE, &Control))
+    for (;;)
     {
+        while (!MiLookupControlArea(Pointers, TRUE, &Control))
+        {
+            MI_RW_RELEASE_EXCLUSIVE(ControlLock);
+            MiWaitForControlTeardown();
+            MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
+        }
+
+        if (Control != NULL)
+        {
+            MI_RW_RELEASE_EXCLUSIVE(ControlLock);
+            *ControlOut = Control;
+            return STATUS_SUCCESS;
+        }
+
+        Build = MiFindImageBuild(Pointers);
+        if (Build == NULL)
+            break;
+
+        InterlockedIncrement(&Build->References);
         MI_RW_RELEASE_EXCLUSIVE(ControlLock);
-        MiWaitForControlTeardown();
+        KeWaitForSingleObject(&Build->Done, Executive, KernelMode, FALSE, NULL);
+        MiDereferenceImageBuild(Build);
         MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
     }
 
-    if (Control != NULL)
+    Build = ExAllocatePoolWithTag(NonPagedPool, sizeof(*Build), 'bImM');
+    if (Build == NULL)
     {
         MI_RW_RELEASE_EXCLUSIVE(ControlLock);
-        *ControlOut = Control;
-        return STATUS_SUCCESS;
+        return STATUS_INSUFFICIENT_RESOURCES;
     }
 
+    Build->Pointers = Pointers;
+    Build->References = 1;
+    KeInitializeEvent(&Build->Done, NotificationEvent, FALSE);
+    InsertTailList(&MiImageBuilds[MiControlIndexFor(Pointers)], &Build->Links);
     MI_RW_RELEASE_EXCLUSIVE(ControlLock);
 
     Control = MiAllocateControlArea(FileObject, TRUE);
-    if (Control == NULL)
-        return STATUS_INSUFFICIENT_RESOURCES;
-
-    Status = MiBuildImageControlArea(Control, (ULONG64)FileSize.QuadPart);
-    if (!NT_SUCCESS(Status))
-    {
-        MiFreeControlArea(Control);
-        return Status;
-    }
+    Status = (Control != NULL) ? MiBuildImageControlArea(Control, (ULONG64)FileSize.QuadPart)
+                               : STATUS_INSUFFICIENT_RESOURCES;
 
     MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
 
-    while (!MiLookupControlArea(Pointers, TRUE, &Existing))
+    if (NT_SUCCESS(Status))
     {
-        MI_RW_RELEASE_EXCLUSIVE(ControlLock);
-        MiWaitForControlTeardown();
-        MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
+        while (!MiLookupControlArea(Pointers, TRUE, &Existing))
+        {
+            MI_RW_RELEASE_EXCLUSIVE(ControlLock);
+            MiWaitForControlTeardown();
+            MI_RW_ACQUIRE_EXCLUSIVE(ControlLock);
+        }
+
+        if (Existing == NULL)
+            Pointers->ImageSectionObject = Control;
+    }
+
+    RemoveEntryList(&Build->Links);
+    MI_RW_RELEASE_EXCLUSIVE(ControlLock);
+    KeSetEvent(&Build->Done, IO_NO_INCREMENT, FALSE);
+    MiDereferenceImageBuild(Build);
+
+    if (!NT_SUCCESS(Status))
+    {
+        if (Control != NULL)
+            MiFreeControlArea(Control);
+        return Status;
     }
 
     if (Existing != NULL)
     {
-        MI_RW_RELEASE_EXCLUSIVE(ControlLock);
         MiSegmentDereferenceAndClose(Control->Segment);
         *ControlOut = Existing;
         return STATUS_SUCCESS;
     }
-
-    Pointers->ImageSectionObject = Control;
-    MI_RW_RELEASE_EXCLUSIVE(ControlLock);
 
     *ControlOut = Control;
     return STATUS_SUCCESS;
@@ -1405,7 +1483,10 @@ MiSectionInitialize(VOID)
     ULONG Index;
 
     for (Index = 0; Index < MI_CONTROL_LOCKS; Index++)
+    {
         MI_RW_INIT(&MiControlLocks[Index]);
+        InitializeListHead(&MiImageBuilds[Index]);
+    }
     MI_MUTEX_INIT(&MiImageWindowLock);
 
     RtlZeroMemory(&Initializer, sizeof(Initializer));
@@ -1529,6 +1610,11 @@ MiCreateSectionWithMode(
         {
             Protection |= MI_PROT_NOCACHE;
             SegmentProtection |= MI_PROT_NOCACHE;
+        }
+        else if (AllocationAttributes & SEC_WRITECOMBINE)
+        {
+            Protection |= MI_PROT_WRITECOMBINE;
+            SegmentProtection |= MI_PROT_WRITECOMBINE;
         }
 
         if (Size == 0)
@@ -1736,7 +1822,7 @@ MiMapPhysicalView(
     for (i = 0; i < Count; i++)
         Frames[i] = (MI_FRAME_NUMBER)(FirstFrame + i);
 
-    Status = MiMapFramesUser(Space, Frames, Count, Protection & ~MI_PROT_NOCACHE, LeafFlags, FALSE, &Base);
+    Status = MiMapFramesUser(Space, Frames, Count, MI_PROT_WITHOUT_CACHE(Protection), LeafFlags, FALSE, &Base);
     ExFreePoolWithTag(Frames, 'hPmM');
 
     if (!NT_SUCCESS(Status))
@@ -1789,8 +1875,8 @@ MiMapSectionView(
             return STATUS_MAPPED_ALIGNMENT;
     }
 
-    if (Protection != MI_PROT_NOACCESS)
-        Protection = (Protection & ~MI_PROT_NOCACHE) | (Control->Segment->Protection & MI_PROT_NOCACHE);
+    if (Protection != MI_PROT_NOACCESS && !MiProtApplyCache(&Protection, MI_PROT_CACHE(Control->Segment->Protection)))
+        return STATUS_INVALID_PAGE_PROTECTION;
 
     if (!Space->IsSystem)
     {

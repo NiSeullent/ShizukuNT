@@ -2270,6 +2270,7 @@ Ndis6WdiAppendKeyMaterial(
             {
                 return FALSE;
             }
+            Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_RECEIVE_SEQUENCE_COUNT, Ccmp->ucIV48Counter, sizeof(Ccmp->ucIV48Counter));
             Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_CCMP_KEY, Ccmp->ucCCMPKey, Ccmp->ulCCMPKeyLength);
             return TRUE;
         }
@@ -2283,6 +2284,7 @@ Ndis6WdiAppendKeyMaterial(
             {
                 return FALSE;
             }
+            Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_RECEIVE_SEQUENCE_COUNT, Gcmp->ucIV48Counter, sizeof(Gcmp->ucIV48Counter));
             Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_GCMP_KEY, Gcmp->ucGCMPKey, Gcmp->ulGCMPKeyLength);
             return TRUE;
         }
@@ -2297,6 +2299,7 @@ Ndis6WdiAppendKeyMaterial(
             {
                 return FALSE;
             }
+            Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_RECEIVE_SEQUENCE_COUNT, Tkip->ucIV48Counter, sizeof(Tkip->ucIV48Counter));
             Offset = Ndis6WdiTlvOpen(Tlvs, WDI_TLV_CIPHER_KEY_TKIP_INFO);
             Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_TKIP_KEY, Tkip->ucTKIPMICKeys, Tkip->ulTKIPKeyLength);
             Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_TKIP_MIC, Tkip->ucTKIPMICKeys + Tkip->ulTKIPKeyLength, Tkip->ulMICKeyLength);
@@ -2313,6 +2316,7 @@ Ndis6WdiAppendKeyMaterial(
             {
                 return FALSE;
             }
+            Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_RECEIVE_SEQUENCE_COUNT, Bip->ucIPN, sizeof(Bip->ucIPN));
             Ndis6WdiTlvAdd(Tlvs, WDI_TLV_CIPHER_KEY_BIP_KEY, Bip->ucBIPKey, Bip->ulBIPKeyLength);
             return TRUE;
         }

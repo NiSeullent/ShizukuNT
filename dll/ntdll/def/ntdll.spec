@@ -998,8 +998,8 @@
 @ stdcall RtlGetLengthWithoutTrailingPathSeperators(long ptr ptr) RtlGetLengthWithoutTrailingPathSeparators
 @ stdcall RtlGetLongestNtPathLength()
 @ stdcall -arch=i386 RtlGetNativeSystemInformation(long ptr long ptr) NtWow64GetNativeSystemInformation
-@ stdcall -arch=x86_64,arm,riscv64,ppc RtlGetNativeSystemInformation(long long long long) NtQuerySystemInformation
-@ stdcall -arch=arm64 RtlGetNativeSystemInformation(long ptr long ptr) ZwQuerySystemInformation
+@ stdcall -arch=x86_64,arm,ppc RtlGetNativeSystemInformation(long long long long) NtQuerySystemInformation
+@ stdcall -arch=arm64,riscv64 RtlGetNativeSystemInformation(long ptr long ptr) ZwQuerySystemInformation
 @ stdcall RtlGetNtGlobalFlags()
 @ stdcall RtlGetNtProductType(ptr)
 @ stdcall RtlGetNtVersionNumbers(ptr ptr ptr)
@@ -1287,6 +1287,7 @@
 @ stdcall RtlSetLastWin32ErrorAndNtStatusFromNtStatus(long)
 @ stdcall RtlSetMemoryStreamSize(ptr int64)
 @ stdcall RtlSetOwnerSecurityDescriptor(ptr ptr long)
+@ stdcall -version=0x602+ RtlSetPortableOperatingSystem(long)
 @ stdcall -stub -version=0x600+ RtlSetProcessDebugInformation(ptr long ptr)
 @ stdcall -version=0x600+ RtlSetProcessPreferredUILanguages(long ptr ptr)
 @ cdecl RtlSetProcessIsCritical(long ptr long)

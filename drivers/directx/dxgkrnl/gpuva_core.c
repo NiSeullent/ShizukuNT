@@ -386,4 +386,49 @@ DxgkGpuVaCorePteEqual(
            Left->LargePage == Right->LargePage;
 }
 
+DXGK_GPUVA_64KB_ENTRIES
+DxgkGpuVaCore64KBEntries(
+    _In_ BOOLEAN DualPteSupported,
+    _In_ ULONG PageTableLevel,
+    _In_ BOOLEAN Repeat)
+{
+    if (!DualPteSupported)
+        return DxgkGpuVa64KBEntriesNone;
+    /* Windows VidMm: entry-less updates repeat a zero PTE in both arrays, level-1 updates pass the 64 KB half. */
+    if (Repeat)
+        return DxgkGpuVa64KBEntriesZeroPte;
+    return PageTableLevel == 1 ? DxgkGpuVa64KBEntriesTableHalf : DxgkGpuVa64KBEntriesNone;
+}
+
+ULONG
+DxgkGpuVaCoreTableUpdateMode(
+    _In_ ULONG AdapterUpdateMode,
+    _In_ BOOLEAN HasPagingVa,
+    _In_ BOOLEAN PagingProcessInit)
+{
+    if (PagingProcessInit)
+        return DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL;
+    if (AdapterUpdateMode == DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL)
+        return DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL;
+    if (HasPagingVa)
+        return DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL;
+    return DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL;
+}
+
+BOOLEAN
+DxgkGpuVaCoreTableNeedsCpuMapping(
+    _In_ ULONG AdapterUpdateMode,
+    _In_ BOOLEAN PagingProcessTable)
+{
+    return AdapterUpdateMode != DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL || PagingProcessTable;
+}
+
+BOOLEAN
+DxgkGpuVaCoreUsesPagingProcessVa(
+    _In_ ULONG AdapterUpdateMode)
+{
+    return AdapterUpdateMode == DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL ||
+           AdapterUpdateMode == DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL;
+}
+
 /* EOF */

@@ -143,8 +143,55 @@ static VOID TestRepresentableAndTableCount(VOID)
     ok_bool_false(DxgkGpuVaCoreTableCountForRange(&Geometry, 9, 0, 0x1000, &Tables), "bad level");
 }
 
+static VOID
+TestTableUpdateMode(VOID)
+{
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, FALSE, FALSE), DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, TRUE, FALSE), DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL, TRUE, FALSE), DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL, FALSE, FALSE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL, FALSE, FALSE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL, TRUE, FALSE), DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL);
+
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, FALSE, TRUE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, TRUE, TRUE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL, TRUE, TRUE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+    ok_eq_ulong(DxgkGpuVaCoreTableUpdateMode(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL, FALSE, TRUE), DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL);
+}
+
+static VOID
+TestTableCpuMapping(VOID)
+{
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, FALSE), FALSE);
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL, TRUE), TRUE);
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL, FALSE), TRUE);
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL, TRUE), TRUE);
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL, FALSE), TRUE);
+    ok_eq_bool(DxgkGpuVaCoreTableNeedsCpuMapping(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL, TRUE), TRUE);
+
+    ok_eq_bool(DxgkGpuVaCoreUsesPagingProcessVa(DXGK_GPUVA_CORE_UPDATE_CPU_VIRTUAL), FALSE);
+    ok_eq_bool(DxgkGpuVaCoreUsesPagingProcessVa(DXGK_GPUVA_CORE_UPDATE_GPU_VIRTUAL), TRUE);
+    ok_eq_bool(DxgkGpuVaCoreUsesPagingProcessVa(DXGK_GPUVA_CORE_UPDATE_GPU_PHYSICAL), TRUE);
+}
+
+static VOID
+Test64KBEntries(VOID)
+{
+    ok_eq_int(DxgkGpuVaCore64KBEntries(FALSE, 1, FALSE), DxgkGpuVa64KBEntriesNone);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(FALSE, 1, TRUE), DxgkGpuVa64KBEntriesNone);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 1, FALSE), DxgkGpuVa64KBEntriesTableHalf);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 0, FALSE), DxgkGpuVa64KBEntriesNone);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 2, FALSE), DxgkGpuVa64KBEntriesNone);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 0, TRUE), DxgkGpuVa64KBEntriesZeroPte);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 1, TRUE), DxgkGpuVa64KBEntriesZeroPte);
+    ok_eq_int(DxgkGpuVaCore64KBEntries(TRUE, 3, TRUE), DxgkGpuVa64KBEntriesZeroPte);
+}
+
 START_TEST(DxgkGpuVaPageTable)
 {
+    TestTableUpdateMode();
+    Test64KBEntries();
+    TestTableCpuMapping();
     TestGeometryValidation();
     TestShiftsAndIndexing();
     TestRepresentableAndTableCount();

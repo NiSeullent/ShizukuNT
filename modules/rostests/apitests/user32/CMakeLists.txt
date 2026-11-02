@@ -24,6 +24,7 @@ list(APPEND SOURCE
     DestroyCursorIcon.c
     DestroyActiveWindow.c
     DestroyWindow.c
+    DialogAccelerator.c
     DialogDpiChangeBehavior.c
     DM_REPOSITION.c
     Dpi.c
@@ -66,6 +67,7 @@ list(APPEND SOURCE
     LoadImage.c
     LoadImageGCC.c
     LookupIconIdFromDirectoryEx.c
+    MaximizedCaptionClick.c
     MenuUI.c
     MenuItemData.c
     MessageStateAnalyzer.c
