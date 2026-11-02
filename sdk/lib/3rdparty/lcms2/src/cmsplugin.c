@@ -612,6 +612,10 @@ cmsBool CMSEXPORT cmsPluginTHR(cmsContext id, void* Plug_in)
                     if (!_cmsRegisterParallelizationPlugin(id, Plugin)) return FALSE;
                     break;
 
+                case cmsPluginHeaderSig:
+                    if (!_cmsRegisterHeaderPlugin(id, Plugin)) return FALSE;
+                    break;
+
                 default:
                     cmsSignalError(id, cmsERROR_UNKNOWN_EXTENSION, "Unrecognized plugin type '%X'", Plugin -> Type);
                     return FALSE;
@@ -636,11 +640,11 @@ static struct _cmsContext_struct globalContext = {
 
     NULL,                                // Not in the linked list
     NULL,                                // No suballocator
-    {
-        NULL,                            //  UserPtr,
+    {                                    
+        NULL,                            //  UserPtr,            
         &_cmsLogErrorChunk,              //  Logger,
         &_cmsAlarmCodesChunk,            //  AlarmCodes,
-        &_cmsAdaptationStateChunk,       //  AdaptationState,
+        &_cmsAdaptationStateChunk,       //  AdaptationState, 
         &_cmsMemPluginChunk,             //  MemPlugin,
         &_cmsInterpPluginChunk,          //  InterpPlugin,
         &_cmsCurvesPluginChunk,          //  CurvesPlugin,
@@ -652,7 +656,8 @@ static struct _cmsContext_struct globalContext = {
         &_cmsOptimizationPluginChunk,    //  OptimizationPlugin,
         &_cmsTransformPluginChunk,       //  TransformPlugin,
         &_cmsMutexPluginChunk,           //  MutexPlugin,
-        &_cmsParallelizationPluginChunk  //  ParallelizationPlugin
+        &_cmsParallelizationPluginChunk, //  ParallelizationPlugin
+        NULL                             //  HeaderPlugin
     },
     
     { NULL, NULL, NULL, NULL, NULL, NULL } // The default memory allocator is not used for context 0
@@ -778,7 +783,7 @@ void* _cmsContextGetClientChunk(cmsContext ContextID, _cmsMemoryClient mc)
 // many different plug-ins simultaneously, then there is no way to 
 // identify which plug-in to unregister.
 void CMSEXPORT cmsUnregisterPluginsTHR(cmsContext ContextID)
-{
+{    
     _cmsRegisterMemHandlerPlugin(ContextID, NULL);
     _cmsRegisterInterpPlugin(ContextID, NULL);
     _cmsRegisterTagTypePlugin(ContextID, NULL);
@@ -791,7 +796,7 @@ void CMSEXPORT cmsUnregisterPluginsTHR(cmsContext ContextID)
     _cmsRegisterTransformPlugin(ContextID, NULL);    
     _cmsRegisterMutexPlugin(ContextID, NULL);
     _cmsRegisterParallelizationPlugin(ContextID, NULL);
-
+    _cmsRegisterHeaderPlugin(ContextID, NULL);
 }
 
 
@@ -943,14 +948,22 @@ cmsContext CMSEXPORT cmsDupContext(cmsContext ContextID, void* NewUserData)
     _cmsAllocTransformPluginChunk(ctx, src);
     _cmsAllocMutexPluginChunk(ctx, src);
     _cmsAllocParallelizationPluginChunk(ctx, src);
+    _cmsAllocHeaderPluginChunk(ctx, src);
 
     // Make sure no one failed
     for (i=Logger; i < MemoryClientMax; i++) {
+
+        if (i == HeaderPlugin) continue;
 
         if (src ->chunks[i] == NULL) {
             cmsDeleteContext((cmsContext) ctx);
             return NULL;
         }
+    }
+
+    if (src->chunks[HeaderPlugin] != NULL && ctx->chunks[HeaderPlugin] == NULL) {
+        cmsDeleteContext((cmsContext) ctx);
+        return NULL;
     }
 
     return (cmsContext) ctx;

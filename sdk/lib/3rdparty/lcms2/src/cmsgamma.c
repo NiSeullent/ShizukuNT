@@ -1511,3 +1511,4 @@ const cmsCurveSegment* CMSEXPORT cmsGetToneCurveSegment(cmsInt32Number n, const 
     if (n < 0 || n >= (cmsInt32Number) t->nSegments) return NULL;
     return t->Segments + n;
 }
+

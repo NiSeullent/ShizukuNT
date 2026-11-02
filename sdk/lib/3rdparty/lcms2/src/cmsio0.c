@@ -77,9 +77,9 @@ cmsBool  NULLWrite(cmsIOHANDLER* iohandler, cmsUInt32Number size, const void *Pt
 {
     FILENULL* ResData = (FILENULL*) iohandler ->stream;
 
-    if (size > (cmsUInt32Number)(0xFFFFFFFFU - ResData->Pointer))
+    if (size > (cmsUInt32Number)(0xFFFFFFFFU - ResData->Pointer))         
         return FALSE;
-
+    
     ResData ->Pointer += size;
     if (ResData ->Pointer > iohandler->UsedSpace)
         iohandler->UsedSpace = ResData ->Pointer;
@@ -157,16 +157,16 @@ cmsUInt32Number MemoryRead(struct _cms_io_handler* iohandler, void *Buffer, cmsU
 
     if ((len / count) != size)
         goto ReadError;
-
-    if (Buffer == NULL)
+    
+    if (Buffer == NULL)                  
         goto ReadError;
 
     if (len > ResData->Size)
         goto ReadError;
 
-    if (ResData -> Pointer > ResData -> Size - len)
+    if (ResData -> Pointer > ResData -> Size - len)         
         goto ReadError;
-
+    
     Ptr  = ResData -> Block;
     Ptr += ResData -> Pointer;
     memmove(Buffer, Ptr, len);
@@ -186,9 +186,9 @@ cmsBool MemorySeek(struct _cms_io_handler* iohandler, cmsUInt32Number offset)
 {
     FILEMEM* ResData = (FILEMEM*) iohandler ->stream;
 
-    if (offset > ResData ->Size)
+    if (offset > ResData ->Size)         
         return FALSE;
-
+    
     ResData ->Pointer = offset;
     return TRUE;
 }
@@ -210,7 +210,7 @@ cmsBool MemoryWrite(struct _cms_io_handler* iohandler, cmsUInt32Number size, con
 {
     FILEMEM* ResData = (FILEMEM*) iohandler ->stream;
 
-    if (ResData == NULL || Ptr == NULL) goto WriteError;
+    if (ResData == NULL || Ptr == NULL) goto WriteError; 
 
     if (size == 0) return TRUE;     // Write zero bytes is ok, but does nothing
 
@@ -220,7 +220,7 @@ cmsBool MemoryWrite(struct _cms_io_handler* iohandler, cmsUInt32Number size, con
 
     if (size > ResData->Size - ResData->Pointer)
         size = ResData->Size - ResData->Pointer;
-
+             
     memmove(ResData ->Block + ResData ->Pointer, Ptr, size);
     ResData ->Pointer += size;
 
@@ -242,7 +242,10 @@ cmsBool  MemoryClose(struct _cms_io_handler* iohandler)
 
     if (ResData ->FreeBlockOnClose) {
 
-        if (ResData ->Block) _cmsFree(iohandler ->ContextID, ResData ->Block);
+        if (ResData->Block) {
+            _cmsFree(iohandler->ContextID, ResData->Block);
+            ResData->Block = NULL;
+        }
     }
 
     _cmsFree(iohandler ->ContextID, ResData);
@@ -428,18 +431,18 @@ cmsIOHANDLER* CMSEXPORT cmsOpenIOhandlerFromFile(cmsContext ContextID, const cha
 
     iohandler = (cmsIOHANDLER*) _cmsMallocZero(ContextID, sizeof(cmsIOHANDLER));
     if (iohandler == NULL) return NULL;
-
+           
     // Validate access mode
     while (*AccessMode) {
 
         switch (*AccessMode)
-        {
+        {        
         case 'r':
         case 'w':
 
             if (mode[0] == 0) {
                 mode[0] = *AccessMode;
-                mode[1] = 'b';
+                mode[1] = 'b';                
             }
             else {
                 _cmsFree(ContextID, iohandler);
@@ -461,7 +464,7 @@ cmsIOHANDLER* CMSEXPORT cmsOpenIOhandlerFromFile(cmsContext ContextID, const cha
 
         AccessMode++;
     }
-
+        
     switch (mode[0]) {
 
     case 'r':
@@ -502,7 +505,7 @@ cmsIOHANDLER* CMSEXPORT cmsOpenIOhandlerFromFile(cmsContext ContextID, const cha
         break;
 
     default:
-        _cmsFree(ContextID, iohandler);   // Would never reach
+        _cmsFree(ContextID, iohandler);   // Would never reach      
         return NULL;
     }
 
@@ -729,6 +732,7 @@ void _cmsDeleteTagByPos(_cmsICCPROFILE* Icc, int i)
         // Free previous version
         if (Icc ->TagSaveAsRaw[i]) {
             _cmsFree(Icc ->ContextID, Icc ->TagPtrs[i]);
+            Icc->TagPtrs[i] = NULL;            
             Icc->TagSaveAsRaw[i] = FALSE;
         }
         else {
@@ -832,14 +836,14 @@ cmsUInt32Number _validatedVersion(cmsUInt32Number DWord)
 }
 
 // Check device class
-static
+static 
 cmsBool validDeviceClass(cmsProfileClassSignature cl)
 {
-    if (cl == (cmsProfileClassSignature)0)
+    if (cl == (cmsProfileClassSignature)0) 
         return TRUE; // We allow zero because older lcms versions defaulted to that.
 
     switch (cl)
-    {
+    {    
     case cmsSigInputClass:
     case cmsSigDisplayClass:
     case cmsSigOutputClass:
@@ -859,6 +863,60 @@ cmsBool validDeviceClass(cmsProfileClassSignature cl)
 
 }
 
+// Return the maximum version handled by the core or by the installed header plug-in.
+static
+cmsUInt32Number SupportedICCVersion(cmsContext ContextID)
+{
+    _cmsHeaderPluginChunkType* PluginChunk = (_cmsHeaderPluginChunkType*) _cmsContextGetClientChunk(ContextID, HeaderPlugin);
+
+    if (PluginChunk == NULL) 
+        return 0x04400000;
+    else
+        return PluginChunk->ICCVersion;        
+}
+
+// Invoke a profile-header read plug-in, preserving the caller's I/O position.
+static
+cmsBool ReadHeaderPlugin(_cmsICCPROFILE* Icc, cmsIOHANDLER* io)
+{
+    _cmsHeaderPluginChunkType* PluginChunk;
+    cmsUInt32Number CurrentPos;
+    cmsBool rc;
+
+    PluginChunk = (_cmsHeaderPluginChunkType*) _cmsContextGetClientChunk(Icc->ContextID, HeaderPlugin);
+    if (PluginChunk == NULL || PluginChunk->ReadPtr == NULL)
+        return TRUE;
+
+    CurrentPos = io->Tell(io);
+    rc = PluginChunk->ReadPtr(Icc->ContextID, (cmsHPROFILE)Icc, io);
+
+    if (!io->Seek(io, CurrentPos))
+        return FALSE;
+
+    return rc;
+}
+
+// Invoke a profile-header write plug-in, preserving the caller's I/O position.
+static
+cmsBool WriteHeaderPlugin(_cmsICCPROFILE* Icc, cmsIOHANDLER* io)
+{
+    _cmsHeaderPluginChunkType* PluginChunk;
+    cmsUInt32Number CurrentPos;
+    cmsBool rc;
+
+    PluginChunk = (_cmsHeaderPluginChunkType*) _cmsContextGetClientChunk(Icc->ContextID, HeaderPlugin);
+    if (PluginChunk == NULL || PluginChunk->WritePtr == NULL)
+        return TRUE;
+
+    CurrentPos = io->Tell(io);
+    rc = PluginChunk->WritePtr(Icc->ContextID, (cmsHPROFILE)Icc, io);
+
+    if (!io->Seek(io, CurrentPos))
+        return FALSE;
+
+    return rc;
+}
+
 // Read profile header and validate it
 cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
 {
@@ -868,6 +926,7 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
     cmsUInt32Number HeaderSize;
     cmsIOHANDLER* io = Icc ->IOhandler;
     cmsUInt32Number TagCount;
+    cmsBool corruptedTagPos = FALSE;
 
 
     // Read the header
@@ -897,7 +956,7 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
     _cmsAdjustEndianess64(&Icc -> attributes, &Header.attributes);
     Icc -> Version         = _cmsAdjustEndianess32(_validatedVersion(Header.version));
 
-    if (Icc->Version > 0x5000000) {
+    if (Icc->Version > SupportedICCVersion(Icc->ContextID)) {
         cmsSignalError(Icc->ContextID, cmsERROR_UNKNOWN_EXTENSION, "Unsupported profile version '0x%x'", Icc->Version);
         return FALSE;
     }
@@ -910,8 +969,8 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
     // Get size as reported in header
     HeaderSize = _cmsAdjustEndianess32(Header.size);
 
-    // Make sure HeaderSize is lower than profile size
-    if (HeaderSize >= Icc ->IOhandler ->ReportedSize)
+    // Make sure HeaderSize is at least same as reported size
+    if (HeaderSize >= Icc->IOhandler->ReportedSize)
             HeaderSize = Icc ->IOhandler ->ReportedSize;
 
 
@@ -921,6 +980,8 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
     // The profile ID are 32 raw bytes
     memmove(Icc ->ProfileID.ID32, Header.profileID.ID32, 16);
 
+    if (!ReadHeaderPlugin(Icc, io))
+        return FALSE;
 
     // Read tag directory
     if (!_cmsReadUInt32Number(io, &TagCount)) return FALSE;
@@ -942,8 +1003,10 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
         // Perform some sanity check. Offset + size should fall inside file.
         if (Tag.size == 0 || Tag.offset == 0) continue;
         if (Tag.offset + Tag.size > HeaderSize ||
-            Tag.offset + Tag.size < Tag.offset)
-                  continue;
+            Tag.offset + Tag.size < Tag.offset) {
+            corruptedTagPos = TRUE;
+            continue;
+        }
 
         Icc -> TagNames[Icc ->TagCount]   = Tag.sig;
         Icc -> TagOffsets[Icc ->TagCount] = Tag.offset;
@@ -951,11 +1014,11 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
 
        // Search for links
         for (j=0; j < Icc ->TagCount; j++) {
-
+           
             if ((Icc ->TagOffsets[j] == Tag.offset) &&
                 (Icc ->TagSizes[j]   == Tag.size)) {
 
-                // Check types.
+                // Check types. 
                 if (CompatibleTypes(_cmsGetTagDescriptor(Icc->ContextID, Icc->TagNames[j]),
                                     _cmsGetTagDescriptor(Icc->ContextID, Tag.sig))) {
 
@@ -981,6 +1044,14 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
         }
     }
 
+    // This is a small aid to diagnose malformed profiles. Please note that execution
+    // continues even if an error message is raised. This situation should NEVER occur
+    // with valid profiles and may indicate an attempted exploit.
+    if (corruptedTagPos) {
+        cmsSignalError(Icc->ContextID, cmsERROR_CORRUPTION_DETECTED, 
+            "'size' field in header seems incorrect.");
+    }
+
     return TRUE;
 }
 
@@ -991,6 +1062,11 @@ cmsBool _cmsWriteHeader(_cmsICCPROFILE* Icc, cmsUInt32Number UsedSpace)
     cmsUInt32Number i;
     cmsTagEntry Tag;
     cmsUInt32Number Count;
+
+    if (Icc->Version > SupportedICCVersion(Icc->ContextID)) {
+        cmsSignalError(Icc->ContextID, cmsERROR_UNKNOWN_EXTENSION, "Unsupported profile version '0x%x'", Icc->Version);
+        return FALSE;
+    }
 
     Header.size        = _cmsAdjustEndianess32(UsedSpace);
     Header.cmmId       = _cmsAdjustEndianess32(Icc ->CMM);
@@ -1030,6 +1106,9 @@ cmsBool _cmsWriteHeader(_cmsICCPROFILE* Icc, cmsUInt32Number UsedSpace)
 
     // Dump the header
     if (!Icc -> IOhandler->Write(Icc->IOhandler, sizeof(cmsICCHeader), &Header)) return FALSE;
+
+    if (!WriteHeaderPlugin(Icc, Icc->IOhandler))
+        return FALSE;
 
     // Saves Tag directory
 
@@ -1385,7 +1464,31 @@ cmsHPROFILE CMSEXPORT cmsOpenProfileFromMem(const void* MemPtr, cmsUInt32Number 
     return cmsOpenProfileFromMemTHR(NULL, MemPtr, dwSize);
 }
 
+// Set/Get user data for profiles
+void CMSEXPORT _cmsSetProfileUserData(cmsHPROFILE hProfile, void* Data, _cmsFreeUserDataFn FreeData)
+{
+    _cmsICCPROFILE* Icc = (_cmsICCPROFILE*)hProfile;
 
+    _cmsAssert(Icc != NULL);
+    
+    if (Icc->UsrData != NULL) 
+    {
+        if (Icc->FreeUsrData != NULL)
+            Icc->FreeUsrData(Icc->ContextID, Icc->UsrData);
+    }
+
+    Icc->UsrData     = Data;
+    Icc->FreeUsrData = FreeData;
+}
+
+void* CMSEXPORT _cmsGetProfileUserData(cmsHPROFILE hProfile)
+{
+    _cmsICCPROFILE* Icc = (_cmsICCPROFILE*)hProfile;
+
+    _cmsAssert(Icc != NULL);
+
+    return Icc->UsrData;
+}
 
 // Dump tag contents. If the profile is being modified, untouched tags are copied from FileOrig
 static
@@ -1430,8 +1533,16 @@ cmsBool SaveTags(_cmsICCPROFILE* Icc, _cmsICCPROFILE* FileOrig)
                     Mem = _cmsMalloc(Icc->ContextID, TagSize);
                     if (Mem == NULL) return FALSE;
 
-                    if (FileOrig->IOhandler->Read(FileOrig->IOhandler, Mem, TagSize, 1) != 1) return FALSE;
-                    if (!io->Write(io, TagSize, Mem)) return FALSE;
+                    if (FileOrig->IOhandler->Read(FileOrig->IOhandler, Mem, TagSize, 1) != 1) {
+                        _cmsFree(Icc->ContextID, Mem);
+                        return FALSE;
+                    }
+
+                    if (!io->Write(io, TagSize, Mem)) {
+                        _cmsFree(Icc->ContextID, Mem);
+                        return FALSE;
+                    }
+
                     _cmsFree(Icc->ContextID, Mem);
 
                     Icc->TagSizes[i] = (io->UsedSpace - Begin);
@@ -1691,6 +1802,9 @@ cmsBool  CMSEXPORT cmsCloseProfile(cmsHPROFILE hProfile)
         rc &= cmsCloseIOhandler(Icc->IOhandler);
     }
 
+    if (Icc->UsrData != NULL && Icc->FreeUsrData != NULL)
+        Icc->FreeUsrData(Icc->ContextID, Icc->UsrData);
+
     _cmsDestroyMutex(Icc->ContextID, Icc->UsrMutex);
 
     _cmsFree(Icc ->ContextID, Icc);   // Free placeholder memory
@@ -1922,7 +2036,7 @@ cmsBool CMSEXPORT cmsWriteTag(cmsHPROFILE hProfile, cmsTagSignature sig, const v
         cmsSignalError(Icc->ContextID, cmsERROR_ALREADY_DEFINED, "Tag  '%x' was already saved as RAW", sig);
         goto Error;
     }
-
+    
     // This is not a link
     Icc ->TagLinked[i] = (cmsTagSignature) 0;
 
@@ -2024,7 +2138,7 @@ cmsUInt32Number CMSEXPORT cmsReadRawTag(cmsHPROFILE hProfile, cmsTagSignature si
     if (!_cmsLockMutex(Icc->ContextID, Icc ->UsrMutex)) return 0;
 
     // Search for given tag in ICC profile directory
-
+    
     i = _cmsSearchTag(Icc, sig, TRUE);
     if (i < 0) goto Error;                 // Not found, 
 
@@ -2036,7 +2150,7 @@ cmsUInt32Number CMSEXPORT cmsReadRawTag(cmsHPROFILE hProfile, cmsTagSignature si
         TagSize  = Icc ->TagSizes[i];
 
         // read the data directly, don't keep copy
-
+        
         if (data != NULL) {
 
             if (BufferSize < TagSize)
@@ -2055,7 +2169,7 @@ cmsUInt32Number CMSEXPORT cmsReadRawTag(cmsHPROFILE hProfile, cmsTagSignature si
 
     // The data has been already read, or written. But wait!, maybe the user choose to save as
     // raw data. In this case, return the raw data directly
-
+    
     if (Icc ->TagSaveAsRaw[i]) {
 
         if (data != NULL)  {
@@ -2076,7 +2190,7 @@ cmsUInt32Number CMSEXPORT cmsReadRawTag(cmsHPROFILE hProfile, cmsTagSignature si
 
     // Already read, or previously set by cmsWriteTag(). We need to serialize that
     // data to raw to get something that makes sense
-
+    
     _cmsUnlockMutex(Icc->ContextID, Icc ->UsrMutex);
     Object = cmsReadTag(hProfile, sig);
     if (!_cmsLockMutex(Icc->ContextID, Icc ->UsrMutex)) return 0;
@@ -2146,9 +2260,10 @@ cmsBool CMSEXPORT cmsWriteRawTag(cmsHPROFILE hProfile, cmsTagSignature sig, cons
     }
 
     // Mark the tag as being written as RAW
-    Icc ->TagSaveAsRaw[i] = TRUE;
-    Icc ->TagNames[i]     = sig;
-    Icc ->TagLinked[i]    = (cmsTagSignature) 0;
+    Icc ->TagSaveAsRaw[i]    = TRUE;
+    Icc ->TagNames[i]        = sig;
+    Icc ->TagLinked[i]       = (cmsTagSignature) 0;
+    Icc ->TagTypeHandlers[i] = NULL;
 
     // Keep a copy of the block
     Icc ->TagPtrs[i]  = _cmsDupMem(Icc ->ContextID, data, Size);

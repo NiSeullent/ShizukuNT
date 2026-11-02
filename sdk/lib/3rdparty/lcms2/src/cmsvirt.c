@@ -474,8 +474,14 @@ cmsHPROFILE CMSEXPORT cmsCreateLab2ProfileTHR(cmsContext ContextID, const cmsCIE
 {
     cmsHPROFILE hProfile;
     cmsPipeline* LUT = NULL;
+    cmsCIEXYZ xyz;
 
-    hProfile = cmsCreateRGBProfileTHR(ContextID, WhitePoint == NULL ? cmsD50_xyY() : WhitePoint, NULL, NULL);
+    if (WhitePoint == NULL)
+        xyz = *cmsD50_XYZ();
+    else
+        cmsxyY2XYZ(&xyz, WhitePoint);
+
+    hProfile = cmsCreateRGBProfileTHR(ContextID, NULL, NULL, NULL);
     if (hProfile == NULL) return NULL;
 
     cmsSetProfileVersion(hProfile, 2.1);
@@ -484,20 +490,18 @@ cmsHPROFILE CMSEXPORT cmsCreateLab2ProfileTHR(cmsContext ContextID, const cmsCIE
     cmsSetColorSpace(hProfile,  cmsSigLabData);
     cmsSetPCS(hProfile,         cmsSigLabData);
 
-    if (!SetTextTags(hProfile, L"Lab identity built-in"))
-        goto Error;
+    if (!cmsWriteTag(hProfile, cmsSigMediaWhitePointTag, &xyz)) goto Error;
+    if (!SetTextTags(hProfile, L"Lab identity built-in")) goto Error;
 
     // An identity LUT is all we need
     LUT = cmsPipelineAlloc(ContextID, 3, 3);
-    if (LUT == NULL)
+    if (LUT == NULL) 
         goto Error;
 
     if (!cmsPipelineInsertStage(LUT, cmsAT_BEGIN, _cmsStageAllocIdentityCLut(ContextID, 3)))
         goto Error;
 
-    if (!cmsWriteTag(hProfile, cmsSigAToB0Tag, LUT))
-        goto Error;
-
+    if (!cmsWriteTag(hProfile, cmsSigAToB0Tag, LUT)) goto Error;
     cmsPipelineFree(LUT);
 
     return hProfile;
@@ -526,7 +530,7 @@ cmsHPROFILE CMSEXPORT cmsCreateLab4ProfileTHR(cmsContext ContextID, const cmsCIE
     cmsHPROFILE hProfile;
     cmsPipeline* LUT = NULL;
     cmsCIEXYZ xyz;
-
+    
     if (WhitePoint == NULL)
         xyz = *cmsD50_XYZ();
     else
@@ -684,7 +688,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_sRGBProfile(void)
 
 /**
 * Oklab colorspace profile (experimental)
-*
+* 
 * This virtual profile cannot be saved as an ICC file
 */
 cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
@@ -715,7 +719,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
         0.0329845436, 0.9293118715,  0.0361456387,
         0.0482003018, 0.2643662691,  0.6338517070
     };
-
+   
     const double M_LMS_D65[] =
     {
         1.227013851103521, -0.557799980651822,  0.281256148966468,
@@ -748,7 +752,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
         1.000000008881761, -0.105561342323656, -0.063854174771706,
         1.000000054672411, -0.089484182094966, -1.291485537864092
     };
-
+    
     cmsStage* LMSprime_OkLab = cmsStageAllocMatrix(ctx, 3, 3, M_LMSprime_OkLab, NULL);
     cmsStage* OkLab_LMSprime = cmsStageAllocMatrix(ctx, 3, 3, M_OkLab_LMSprime, NULL);
 
@@ -758,7 +762,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
     cmsHPROFILE hProfile = cmsCreateProfilePlaceholder(ctx);
     if (!hProfile)            // can't allocate
         goto error;
-
+  
     cmsSetProfileVersion(hProfile, 4.4);
 
     cmsSetDeviceClass(hProfile, cmsSigColorSpaceClass);
@@ -768,7 +772,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
     cmsSetHeaderRenderingIntent(hProfile, INTENT_RELATIVE_COLORIMETRIC);
 
     /**
-    * Conversion PCS (XYZ/D50) to OkLab
+    * Conversion PCS (XYZ/D50) to OkLab 
     */
     if (!cmsPipelineInsertStage(BToA, cmsAT_END, PCSXYZ)) goto error;
     if (!cmsPipelineInsertStage(BToA, cmsAT_END, D50toD65)) goto error;
@@ -777,7 +781,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
     if (!cmsPipelineInsertStage(BToA, cmsAT_END, LMSprime_OkLab)) goto error;
 
     if (!cmsWriteTag(hProfile, cmsSigBToA0Tag, BToA)) goto error;
-
+    
     if (!cmsPipelineInsertStage(AToB, cmsAT_END, OkLab_LMSprime)) goto error;
     if (!cmsPipelineInsertStage(AToB, cmsAT_END, NonLinearityRv)) goto error;
     if (!cmsPipelineInsertStage(AToB, cmsAT_END, LMStoD65)) goto error;
@@ -911,17 +915,17 @@ cmsHPROFILE CMSEXPORT cmsCreateBCHSWabstractProfileTHR(cmsContext ContextID,
 
     for (i=0; i < MAX_INPUT_DIMENSIONS; i++) Dimensions[i] = nLUTPoints;
     CLUT = cmsStageAllocCLut16bitGranular(ContextID, Dimensions, 3, 3, NULL);
-    if (CLUT == NULL)
+    if (CLUT == NULL) 
         goto Error;
 
-    if (!cmsStageSampleCLut16bit(CLUT, bchswSampler, (void*) &bchsw, 0))
+    if (!cmsStageSampleCLut16bit(CLUT, bchswSampler, (void*) &bchsw, 0)) 
         goto Error;
-
-    if (!cmsPipelineInsertStage(Pipeline, cmsAT_END, CLUT))
+    
+    if (!cmsPipelineInsertStage(Pipeline, cmsAT_END, CLUT)) 
         goto Error;
-
+    
     // Create tags
-    if (!SetTextTags(hICC, L"BCHS built-in"))
+    if (!SetTextTags(hICC, L"BCHS built-in")) 
         goto Error;
 
     if (!cmsWriteTag(hICC, cmsSigMediaWhitePointTag, (void*)cmsD50_XYZ()))
@@ -1320,7 +1324,7 @@ cmsHPROFILE CMSEXPORT cmsTransform2DeviceLink(cmsHTRANSFORM hTransform, cmsFloat
 
 
     // Colorant tables have special rules depening on deviceClass
-    if (xform -> InputColorant != NULL &&
+    if (xform -> InputColorant != NULL && 
        (deviceClass == cmsSigLinkClass || deviceClass == cmsSigInputClass)) {
 
            if (!cmsWriteTag(hProfile, cmsSigColorantTableTag, xform->InputColorant)) goto Error;

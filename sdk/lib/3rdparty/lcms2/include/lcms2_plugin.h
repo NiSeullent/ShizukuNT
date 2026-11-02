@@ -210,6 +210,7 @@ typedef void*    (* _cmsDupUserDataFn)(cmsContext ContextID, const void* Data);
 #define cmsPluginTransformSig                0x7A666D48     // 'xfmH'
 #define cmsPluginMutexSig                    0x6D747A48     // 'mtxH'
 #define cmsPluginParalellizationSig          0x70726C48     // 'prlH
+#define cmsPluginHeaderSig                   0x68647248     // 'hdrH'
 
 typedef struct _cmsPluginBaseStruct {
 
@@ -346,6 +347,7 @@ typedef struct {
 // Formatter16 callback
 
 struct _cmstransform_struct;
+struct _cmsiccprofile_struct;
 
 typedef cmsUInt8Number* (* cmsFormatter16)(CMSREGISTER struct _cmstransform_struct* CMMcargo,
                                            CMSREGISTER cmsUInt16Number Values[],
@@ -604,8 +606,8 @@ typedef void     (*_cmsTransform2Fn)(struct _cmstransform_struct *CMMcargo,
                                      const void* InputBuffer,
                                      void* OutputBuffer,
                                      cmsUInt32Number PixelsPerLine,
-                                     cmsUInt32Number LineCount,
-                                     const cmsStride* Stride);
+                                     cmsUInt32Number LineCount,      
+                                     const cmsStride* Stride); 
 
 typedef cmsBool  (* _cmsTransformFactory)(_cmsTransformFn* xform,
                                          void** UserData,
@@ -671,7 +673,7 @@ CMSAPI cmsBool CMSEXPORT _cmsLockMutex(cmsContext ContextID, void* mtx);
 CMSAPI void    CMSEXPORT _cmsUnlockMutex(cmsContext ContextID, void* mtx);
 
 //----------------------------------------------------------------------------------------------------------
-// Parallelization
+// Parallelization 
 
 CMSAPI _cmsTransform2Fn CMSEXPORT _cmsGetTransformWorker(struct _cmstransform_struct* CMMcargo);
 CMSAPI cmsInt32Number   CMSEXPORT _cmsGetTransformMaxWorkers(struct _cmstransform_struct* CMMcargo);
@@ -685,9 +687,37 @@ typedef struct {
 
     cmsInt32Number      MaxWorkers;       // Number of starts to do as maximum
     cmsUInt32Number     WorkerFlags;      // Reserved
-    _cmsTransform2Fn    SchedulerFn;      // callback to setup functions
+    _cmsTransform2Fn    SchedulerFn;      // callback to setup functions     
 
 }  cmsPluginParalellization;
+
+
+
+//----------------------------------------------------------------------------------------------------------
+// Header
+
+CMSAPI void   CMSEXPORT _cmsSetProfileUserData(cmsHPROFILE hProfile, void* Data, _cmsFreeUserDataFn FreeData);
+CMSAPI void*  CMSEXPORT _cmsGetProfileUserData(cmsHPROFILE hProfile);
+
+// The plug-in may use the I/O handler freely, but must not close it.
+// LittleCMS restores the handler position after each callback.
+
+typedef cmsBool (*_cmsReadProfileHeaderFn)(cmsContext ContextID,
+                                           cmsHPROFILE hProfile,
+                                           cmsIOHANDLER* io);
+
+typedef cmsBool (*_cmsWriteProfileHeaderFn)(cmsContext ContextID,
+                                            cmsHPROFILE hProfile,
+                                            cmsIOHANDLER* io);
+
+typedef struct {
+    cmsPluginBase              base;
+
+    cmsUInt32Number            ICCVersion;
+    _cmsReadProfileHeaderFn    ReadPtr;
+    _cmsWriteProfileHeaderFn   WritePtr;
+
+} cmsPluginHeader;
 
 
 #ifndef CMS_USE_CPP_API

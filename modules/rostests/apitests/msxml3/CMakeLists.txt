@@ -1,0 +1,5 @@
+add_executable(msxml3_apitest DtdValidate.c testlist.c)
+target_link_libraries(msxml3_apitest uuid)
+set_module_type(msxml3_apitest win32cui)
+add_importlibs(msxml3_apitest oleaut32 ole32 msvcrt kernel32)
+add_rostests_file(TARGET msxml3_apitest)

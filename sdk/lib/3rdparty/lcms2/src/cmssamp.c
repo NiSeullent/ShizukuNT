@@ -73,7 +73,7 @@ cmsBool  BlackPointAsDarkerColorant(cmsHPROFILE    hInput,
     cmsUInt32Number dwFormat;
     cmsHPROFILE hLab;
     cmsCIELab  Lab;
-    cmsCIEXYZ  BlackXYZ;
+    cmsCIEXYZ  BlackXYZ;    
     cmsContext ContextID = cmsGetProfileContextID(hInput);
 
     // If the profile does not support input direction, assume Black point 0
@@ -122,6 +122,9 @@ cmsBool  BlackPointAsDarkerColorant(cmsHPROFILE    hInput,
 
     // Convert black to Lab
     cmsDoTransform(xform, Black, &Lab, 1);
+
+    // Force it to be neutral, check for inconsistencies
+    Lab.a = Lab.b = 0;
 
     if (Lab.L > 95)
         Lab.L = 0;  // for synthetical negative profiles
@@ -207,7 +210,7 @@ cmsBool isInkColorspace(cmsColorSpaceSignature c)
     case cmsSigMCHCData:
     case cmsSigMCHDData:
     case cmsSigMCHEData:
-    case cmsSigMCHFData:
+    case cmsSigMCHFData:    
     case cmsSig1colorData:
     case cmsSig2colorData:
     case cmsSig3colorData:
@@ -381,7 +384,7 @@ cmsFloat64Number RootOfLeastSquaresFitQuadraticCurve(int n, cmsFloat64Number x[]
          else {
 
              double rt;
-
+             
              if (fabs(a) < 1.0E-10) return 0;
 
              rt = (-b + sqrt(d)) / (2.0 * a);

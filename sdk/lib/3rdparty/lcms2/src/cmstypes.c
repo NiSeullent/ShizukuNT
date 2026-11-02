@@ -93,7 +93,7 @@ cmsBool RegisterTypesPlugin(cmsContext id, cmsPluginBase* Data, _cmsMemoryClient
     return TRUE;
 }
 
-// Return handler for a given type or NULL if not found. Shared between normal types and MPE. It first tries the additions
+// Return handler for a given type or NULL if not found. Shared between normal types and MPE. It first tries the additions 
 // made by plug-ins and then the built-in defaults.
 static
 cmsTagTypeHandler* GetHandler(cmsTagTypeSignature sig, _cmsTagTypeLinkedList* PluginLinkedList, _cmsTagTypeLinkedList* DefaultLinkedList)
@@ -127,8 +127,25 @@ cmsBool _cmsWriteWCharArray(cmsIOHANDLER* io, cmsUInt32Number n, const wchar_t* 
     _cmsAssert(io != NULL);
     _cmsAssert(!(Array == NULL && n > 0));
 
-    for (i=0; i < n; i++) {
-        if (!_cmsWriteUInt16Number(io, (cmsUInt16Number) Array[i])) return FALSE;
+    for (i = 0; i < n; i++) {
+
+        wchar_t v = Array[i];
+        cmsUInt16Number out;
+        
+        #if (WCHAR_MAX > 0xFFFF)     // WCHAR_MAX support is required for C99
+                // UTF-32 wchar_t platforms
+                if (v <= 0xFFFF && !(v >= 0xD800 && v <= 0xDFFF))
+                    out = (cmsUInt16Number)v;
+                else
+                    out = (cmsUInt16Number)'?';
+        #else
+                // UTF-16 wchar_t platforms:
+                // preserve code units exactly, including surrogates.
+                out = (cmsUInt16Number)v;
+        #endif
+
+        if (!_cmsWriteUInt16Number(io, out))
+            return FALSE;
     }
 
     return TRUE;
@@ -1143,8 +1160,8 @@ void *Type_Text_Description_Read(struct _cms_typehandler_struct* self, cmsIOHAND
     if (!_cmsReadUInt32Number(io, &UnicodeCode)) goto Done;
     if (!_cmsReadUInt32Number(io, &UnicodeCount)) goto Done;
     SizeOfTag -= 2* sizeof(cmsUInt32Number);
-
-    if (UnicodeCount == 0 || UnicodeCount > 0x7ffff ||
+    
+    if (UnicodeCount == 0 || UnicodeCount > 0x7ffff || 
         SizeOfTag < UnicodeCount*sizeof(cmsUInt16Number)) goto Done;
 
     UnicodeString = (wchar_t*)_cmsMallocZero(self->ContextID, (UnicodeCount + 1) * sizeof(wchar_t));
@@ -1152,6 +1169,7 @@ void *Type_Text_Description_Read(struct _cms_typehandler_struct* self, cmsIOHAND
 
     if (!_cmsReadWCharArray(io, UnicodeCount, UnicodeString)) {
         _cmsFree(self->ContextID, (void*)UnicodeString);
+        UnicodeString = NULL;
         goto Done;
     }
 
@@ -1159,6 +1177,7 @@ void *Type_Text_Description_Read(struct _cms_typehandler_struct* self, cmsIOHAND
 
     if (!cmsMLUsetWide(mlu, cmsV2Unicode, cmsV2Unicode, UnicodeString)) {
         _cmsFree(self->ContextID, (void*)UnicodeString);
+        UnicodeString = NULL;
         goto Done;
     }
 
@@ -1617,9 +1636,9 @@ void *Type_Measurement_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* 
 {
     cmsICCMeasurementConditions mc;
 
-
+    
     memset(&mc, 0, sizeof(mc));
-
+    
     if (!_cmsReadUInt32Number(io, &mc.Observer)) return NULL;
     if (!_cmsReadXYZNumber(io,    &mc.Backing)) return NULL;
     if (!_cmsReadUInt32Number(io, &mc.Geometry)) return NULL;
@@ -1712,9 +1731,9 @@ void *Type_MLU_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cmsU
         if (!_cmsReadUInt32Number(io, &Len)) goto Error;
         if (!_cmsReadUInt32Number(io, &Offset)) goto Error;
 
-        // Offset MUST be even because it indexes a block of utf16 chars.
+        // Offset MUST be even because it indexes a block of utf16 chars. 
         // Tricky profiles that uses odd positions will not work anyway
-        // because the whole utf16 block is previously converted to wchar_t
+        // because the whole utf16 block is previously converted to wchar_t 
         // and sizeof this type may be of 4 bytes. On Linux systems, for example.
         if (Offset & 1) goto Error;
 
@@ -1748,7 +1767,7 @@ void *Type_MLU_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cmsU
 
         Block = (wchar_t*) _cmsCalloc(self ->ContextID, 1, SizeOfTag);
         if (Block == NULL) goto Error;
-
+       
         NumOfWchar = SizeOfTag / sizeof(wchar_t);
         if (!_cmsReadWCharArray(io, NumOfWchar, Block)) {
             _cmsFree(self->ContextID, Block);
@@ -2151,7 +2170,7 @@ cmsBool Type_LUT8_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
     if (clut == NULL)
         clutPoints = 0;
     else {
-        // Lut8 only allows same CLUT points in all dimensions
+        // Lut8 only allows same CLUT points in all dimensions        
         clutPoints = clut->Params->nSamples[0];
         for (i = 1; i < cmsPipelineInputChannels(NewLUT); i++) {
             if (clut->Params->nSamples[i] != clutPoints) {
@@ -2160,7 +2179,7 @@ cmsBool Type_LUT8_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
             }
         }
     }
-
+        
     if (!_cmsWriteUInt8Number(io, (cmsUInt8Number)cmsPipelineInputChannels(NewLUT))) return FALSE;
     if (!_cmsWriteUInt8Number(io, (cmsUInt8Number)cmsPipelineOutputChannels(NewLUT))) return FALSE;
     if (!_cmsWriteUInt8Number(io, (cmsUInt8Number) clutPoints)) return FALSE;
@@ -2174,7 +2193,7 @@ cmsBool Type_LUT8_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
         }
     }
     else {
-
+        
         if (!_cmsWrite15Fixed16Number(io, 1)) return FALSE;
         if (!_cmsWrite15Fixed16Number(io, 0)) return FALSE;
         if (!_cmsWrite15Fixed16Number(io, 0)) return FALSE;
@@ -2288,7 +2307,7 @@ cmsBool Write16bitTables(cmsContext ContextID, cmsIOHANDLER* io, _cmsStageToneCu
     cmsUInt32Number nEntries;
 
     _cmsAssert(Tables != NULL);
-
+   
     for (i=0; i < Tables ->nCurves; i++) {
 
         nEntries = Tables->TheCurves[i]->nEntries;
@@ -2445,7 +2464,7 @@ cmsBool Type_LUT16_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io,
     if (clut == NULL)
         clutPoints = 0;
     else {
-        // Lut16 only allows same CLUT points in all dimensions
+        // Lut16 only allows same CLUT points in all dimensions        
         clutPoints = clut->Params->nSamples[0];
         for (i = 1; i < InputChannels; i++) {
             if (clut->Params->nSamples[i] != clutPoints) {
@@ -2459,7 +2478,7 @@ cmsBool Type_LUT16_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io,
     if (!_cmsWriteUInt8Number(io, (cmsUInt8Number) OutputChannels)) return FALSE;
     if (!_cmsWriteUInt8Number(io, (cmsUInt8Number) clutPoints)) return FALSE;
     if (!_cmsWriteUInt8Number(io, 0)) return FALSE; // Padding
-
+    
     if (MatMPE != NULL) {
                 
         for (i = 0; i < 9; i++)
@@ -2469,7 +2488,7 @@ cmsBool Type_LUT16_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io,
       
     }
     else {
-
+        
         if (!_cmsWrite15Fixed16Number(io, 1)) return FALSE;
         if (!_cmsWrite15Fixed16Number(io, 0)) return FALSE;
         if (!_cmsWrite15Fixed16Number(io, 0)) return FALSE;
@@ -4756,7 +4775,7 @@ cmsBool ReadMPEElem(struct _cms_typehandler_struct* self,
     }
 
     return TRUE;
-
+    
     cmsUNUSED_PARAMETER(n);
 }
 
@@ -4784,7 +4803,8 @@ void *Type_MPE_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cmsU
     NewLUT = cmsPipelineAlloc(self ->ContextID, InputChans, OutputChans);
     if (NewLUT == NULL) return NULL;
 
-    if (!_cmsReadUInt32Number(io, &ElementCount)) goto Error;    
+    if (!_cmsReadUInt32Number(io, &ElementCount)) goto Error;  
+    if (ElementCount > 50) goto Error;
     if (!ReadPositionTable(self, io, ElementCount, BaseOffset, NewLUT, ReadMPEElem)) goto Error;
 
     // Check channel count
@@ -4868,7 +4888,7 @@ cmsBool Type_MPE_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, v
 
         if (!_cmsWriteUInt32Number(io, ElementSig)) goto Error;
         if (!_cmsWriteUInt32Number(io, 0)) goto Error;
-
+ 
         if (!TypeHandler ->WritePtr(self, io, Elem, 1)) goto Error;
         if (!_cmsWriteAlignment(io)) goto Error;
 
@@ -5181,6 +5201,7 @@ cmsBool AllocElem(cmsContext ContextID, _cmsDICelem* e,  cmsUInt32Number Count)
     if (e->Sizes == NULL) {
 
         _cmsFree(ContextID, e -> Offsets);
+        e->Offsets = NULL;
         return FALSE;
     }
 
@@ -5345,6 +5366,7 @@ cmsBool ReadOneWChar(cmsIOHANDLER* io,  _cmsDICelem* e, cmsUInt32Number i, wchar
 
       if (!_cmsReadWCharArray(io, nChars, *wcstr)) {
           _cmsFree(e ->ContextID, *wcstr);
+          *wcstr = NULL;
           return FALSE;
       }
 
@@ -5498,10 +5520,25 @@ void *Type_Dictionary_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* i
             rc = cmsDictAddEntry(hDict, NameWCS, ValueWCS, DisplayNameMLU, DisplayValueMLU);
         }
 
-        if (NameWCS != NULL) _cmsFree(self ->ContextID, NameWCS);
-        if (ValueWCS != NULL) _cmsFree(self ->ContextID, ValueWCS);
-        if (DisplayNameMLU != NULL) cmsMLUfree(DisplayNameMLU);
-        if (DisplayValueMLU != NULL) cmsMLUfree(DisplayValueMLU);
+        if (NameWCS != NULL) {
+            _cmsFree(self->ContextID, NameWCS);
+            NameWCS = NULL;
+        }
+
+        if (ValueWCS != NULL) {
+            _cmsFree(self->ContextID, ValueWCS);
+            ValueWCS = NULL;
+        }
+
+        if (DisplayNameMLU != NULL) {
+            cmsMLUfree(DisplayNameMLU);
+            DisplayNameMLU = NULL;
+        }
+
+        if (DisplayValueMLU != NULL) {
+            cmsMLUfree(DisplayValueMLU);
+            DisplayValueMLU = NULL;
+        }
 
         if (!rc) goto Error;
     }
@@ -5513,6 +5550,10 @@ void *Type_Dictionary_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* i
 Error:
    FreeArray(&a);
    if (hDict != NULL) cmsDictFree(hDict);
+   if (NameWCS != NULL) _cmsFree(self->ContextID, NameWCS);
+   if (ValueWCS != NULL) _cmsFree(self->ContextID, ValueWCS);
+   if (DisplayNameMLU != NULL) cmsMLUfree(DisplayNameMLU);
+   if (DisplayValueMLU != NULL) cmsMLUfree(DisplayValueMLU);
    return NULL;
 }
 
@@ -5617,8 +5658,8 @@ void* Type_VideoSignal_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* 
 {
     cmsVideoSignalType* cicp = NULL;
 
-    if (SizeOfTag != 4) return NULL;
-
+    if (SizeOfTag != 4) return NULL; 
+    
     cicp = (cmsVideoSignalType*)_cmsCalloc(self->ContextID, 1, sizeof(cmsVideoSignalType));
     if (cicp == NULL) return NULL;
 
@@ -5640,7 +5681,7 @@ static
 cmsBool Type_VideoSignal_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, void* Ptr, cmsUInt32Number nItems)
 {
     cmsVideoSignalType* cicp = (cmsVideoSignalType*)Ptr;
-
+    
     if (!_cmsWriteUInt8Number(io, cicp->ColourPrimaries)) return FALSE;
     if (!_cmsWriteUInt8Number(io, cicp->TransferCharacteristics)) return FALSE;
     if (!_cmsWriteUInt8Number(io, cicp->MatrixCoefficients)) return FALSE;
@@ -5668,7 +5709,7 @@ void Type_VideoSignal_Free(struct _cms_typehandler_struct* self, void* Ptr)
 
 
 // ********************************************************************************
-// Microsoft's MHC2 Type support
+// Microsoft's MHC2 Type support 
 // ********************************************************************************
 
 static
@@ -5737,7 +5778,7 @@ static
 cmsBool WriteDoubles(cmsIOHANDLER* io, cmsUInt32Number n, cmsFloat64Number* Values)
 {
     cmsUInt32Number i;
-
+    
     for (i = 0; i < n; i++) {
 
         if (!_cmsWrite15Fixed16Number(io, *Values++)) return FALSE;
@@ -5754,7 +5795,7 @@ cmsBool Type_MHC2_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
     cmsUInt32Number TablesOffsetPos;
     cmsUInt32Number MatrixOffset;
     cmsUInt32Number OffsetRedTable, OffsetGreenTable, OffsetBlueTable;
-
+    
     if (!_cmsWriteUInt32Number(io, mhc2->CurveEntries)) return FALSE;
 
     if (!_cmsWrite15Fixed16Number(io, mhc2->MinLuminance)) return FALSE;
@@ -5781,7 +5822,7 @@ cmsBool Type_MHC2_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
     OffsetRedTable = io->Tell(io) - BaseOffset;
 
     if(!_cmsWriteUInt32Number(io, cmsSigS15Fixed16ArrayType)) return FALSE;
-    if(!_cmsWriteUInt32Number(io, 0)) return FALSE;
+    if(!_cmsWriteUInt32Number(io, 0)) return FALSE;   
 
     if (!WriteDoubles(io, mhc2->CurveEntries, mhc2->RedCurve)) return FALSE;
 
@@ -5797,10 +5838,10 @@ cmsBool Type_MHC2_Write(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, 
 
     if (!io->Seek(io, TablesOffsetPos)) return FALSE;
 
-    if (!_cmsWriteUInt32Number(io, MatrixOffset)) return FALSE;
-    if (!_cmsWriteUInt32Number(io, OffsetRedTable)) return FALSE;
-    if (!_cmsWriteUInt32Number(io, OffsetGreenTable)) return FALSE;
-    if (!_cmsWriteUInt32Number(io, OffsetBlueTable)) return FALSE;
+    if (!_cmsWriteUInt32Number(io, MatrixOffset)) return FALSE;      
+    if (!_cmsWriteUInt32Number(io, OffsetRedTable)) return FALSE;    
+    if (!_cmsWriteUInt32Number(io, OffsetGreenTable)) return FALSE;  
+    if (!_cmsWriteUInt32Number(io, OffsetBlueTable)) return FALSE;   
 
     return TRUE;
 
@@ -5835,7 +5876,7 @@ void* Type_MHC2_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cms
     cmsUInt32Number BaseOffset = io->Tell(io) - sizeof(_cmsTagBase);
     cmsUInt32Number MatrixOffset;
     cmsUInt32Number OffsetRedTable, OffsetGreenTable, OffsetBlueTable;
-
+        
     mhc2 = (cmsMHC2Type*)_cmsCalloc(self->ContextID, 1, sizeof(cmsMHC2Type));
     if (mhc2 == NULL) return NULL;
 
@@ -5859,8 +5900,8 @@ void* Type_MHC2_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cms
     if (!_cmsReadUInt32Number(io, &OffsetGreenTable)) goto Error;
     if (!_cmsReadUInt32Number(io, &OffsetBlueTable)) goto Error;
 
-    if (MatrixOffset == 0)
-        SetIdentity(mhc2->XYZ2XYZmatrix);
+    if (MatrixOffset == 0) 
+        SetIdentity(mhc2->XYZ2XYZmatrix);            
     else
     {
         if (!ReadDoublesAt(io, BaseOffset + MatrixOffset, 3*4, &mhc2->XYZ2XYZmatrix[0][0])) goto Error;
@@ -5870,7 +5911,7 @@ void* Type_MHC2_Read(struct _cms_typehandler_struct* self, cmsIOHANDLER* io, cms
     if (!ReadDoublesAt(io, BaseOffset + OffsetRedTable + 8, mhc2->CurveEntries, mhc2->RedCurve)) goto Error;
     if (!ReadDoublesAt(io, BaseOffset + OffsetGreenTable + 8, mhc2->CurveEntries, mhc2->GreenCurve)) goto Error;
     if (!ReadDoublesAt(io, BaseOffset + OffsetBlueTable + 8, mhc2->CurveEntries, mhc2->BlueCurve)) goto Error;
-
+    
     // Success
     *nItems = 1;
     return mhc2;
