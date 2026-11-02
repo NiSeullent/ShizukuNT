@@ -7,6 +7,33 @@ ReactOS FreeType is a slightly hacked version of FreeType. See also the original
 - https://freetype.org/
 - https://sourceforge.net/projects/freetype/files/freetype2/
 
+## LiberNT FreeType 2.15.0
+
+- Source: https://download.savannah.gnu.org/releases/freetype/freetype-2.15.0.tar.xz
+  SHA-256 93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5,
+  signed by Werner Lemberg, key E306 7470 7856 409F F194 8010 BE6C 3AAC 63AD 8E3F.
+- Licence: FreeType is dual-licensed (FTL or GPL-2.0-or-later, see LICENSE.TXT).
+  LiberNT uses it under GPL-2.0-or-later. LICENSE.TXT, docs/FTL.TXT and docs/GPLv2.TXT are kept.
+- Kept from the release: README, LICENSE.TXT, docs/FTL.TXT, docs/GPLv2.TXT, include/freetype,
+  include/ft2build.h, builds/windows/ftdebug.c and the src module directories that CMakeLists.txt builds.
+- Left out: build systems (*.mk, meson, CMake, project files), src/base/ftdebug.c, src/base/ftver.rc,
+  src/tools, src/gxvalid, src/otvalid, the dlg logging library (include/dlg, src/dlg), and the modules
+  that are not built: hvf, sdf, svg.
+- Module set: the same as 2.10.4. ftmodule.h disables hvf, sdf, bitmap_sdf and ot-svg for __REACTOS__.
+- ftoption.h for __REACTOS__: no environment properties, subpixel rendering on, FT_DEBUG_LEVEL_ERROR in
+  debug builds, FT_CONFIG_OPTION_SVG off (no SVG renderer is built), TT_CONFIG_OPTION_VARC off
+  (tt_varc_get_item_deltas needs a 9 KB stack frame, too large for kernel stacks).
+  zlib (bundled 1.3.1), bzip2, PNG, Brotli and HarfBuzz keep their 2.10.4 states.
+- Re-applied ReactOS patches: heap instead of stack for large objects (autofit, cid, type1, psaux,
+  sfnt sbit decoder, raster and smooth workers and render pools), FT_Bitmap_Convert_ReactOS_Hack,
+  the CORE-12549 cmap format 4 check, FT_Message/FT_Panic provided by the consumers, and the GCC
+  -Wdangling-pointer pragma in ttgload.c.
+- Dropped ReactOS patches, fixed upstream: the FT_Library_SetLcdGeometry prototype mismatch and the
+  incremental stream restore in ttgload.c. aflatin2.c no longer exists.
+- Local fixes: cf2_interpT2CharString reports Out_Of_Memory when its glyph path allocation fails;
+  ftobjs.c guards func_name with FT_DEBUG_LEVEL_TRACE (it is only used by FT_TRACE2); ttgxvar.c and
+  ttgxvar.h build tt_var_init_gvar only with TT_CONFIG_OPTION_VARC (its only caller).
+
 ## ReactOS FreeType 2.10.4
 
 - Now woff/woff2 formats are supported (not handled yet).
