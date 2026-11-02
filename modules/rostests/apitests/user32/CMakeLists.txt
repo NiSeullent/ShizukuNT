@@ -59,6 +59,7 @@ list(APPEND SOURCE
     IsTopLevelWindow.c
     IsServerSideWindow.c
     JobUiWindowAccess.c
+    KbdKorean.c
     KbdLayout.c
     LargeMessageBuffers.c
     keybd_event.c

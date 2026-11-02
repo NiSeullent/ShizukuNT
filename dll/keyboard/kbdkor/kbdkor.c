@@ -7,12 +7,6 @@
  * and http://win.tue.nl/~aeb/linux/kbd/scancodes-1.html
  */
 
-/*
- * Important Note / TODO:
- * This file is a copy of kbdus.c and needs to adapt to Korean
- * keyboard layout!
- */
-
 #define WIN32_NO_STATUS
 #include <stdarg.h>
 #include <windef.h>
@@ -95,9 +89,9 @@ ROSDATA USHORT scancode_to_vk[] = {
   VK_F21, VK_F22, VK_F23,
   /* - 6f - */
   /* Not sure who uses these codes */
-  VK_EMPTY, VK_EMPTY, VK_EMPTY,
+  VK_EMPTY, VK_EMPTY, VK_HANJA,
   /* - 72 - */
-  VK_EMPTY, VK_EMPTY, VK_EMPTY, VK_EMPTY,
+  VK_HANGUL, VK_EMPTY, VK_EMPTY, VK_EMPTY,
   /* - 76 - */
   /* One more f-key */
   VK_F24,
@@ -106,6 +100,7 @@ ROSDATA USHORT scancode_to_vk[] = {
   VK_EMPTY, VK_EMPTY, VK_EMPTY, VK_EMPTY, /* PA1 */
 };
 
+/* TODO: Korean 101-key subtypes (LayerDriver KOR) map E0 38 and E0 1D to VK_HANGUL and VK_HANJA; win32k has no layer driver selection */
 ROSDATA VSC_VK extcode0_to_vk[] = {
   { 0x10, VK_MEDIA_PREV_TRACK | KBDEXT },
   { 0x19, VK_MEDIA_NEXT_TRACK | KBDEXT },
@@ -221,10 +216,9 @@ ROSDATA VK_TO_WCHARS2 key_to_chars_2mod[] = {
   { VK_TAB     ,0, {'\t','\t'} },
   { VK_ADD     ,0, {'+', '+'} },
   { VK_SUBTRACT,0, {'-', '-'} },
+  { VK_DECIMAL ,0, {'.', '.'} },
   { VK_MULTIPLY,0, {'*', '*'} },
   { VK_DIVIDE  ,0, {'/', '/'} },
-  { VK_ESCAPE  ,0, {0x1b,0x1b} },
-  { VK_SPACE   ,0, {' ', ' '} },
   { 0, 0 }
 };
 
@@ -235,7 +229,11 @@ ROSDATA VK_TO_WCHARS3 key_to_chars_3mod[] = {
   { VK_OEM_6, 0, {']', '}', 0x1d /* GS */} },
   { VK_OEM_5, 0, {'\\','|', 0x1c /* FS */} },
   { VK_OEM_102,0,{'\\','|', 0x1c /* FS */} },
+  { VK_BACK,  0, {0x8, 0x8, 0x7f} },
+  { VK_ESCAPE,0, {0x1b, 0x1b, 0x1b} },
   { VK_RETURN,0, {'\r', '\r', '\n'} },
+  { VK_SPACE, 0, {' ', ' ', ' '} },
+  { VK_CANCEL,0, {0x3, 0x3, 0x3} },
   { 0,0 }
 };
 
@@ -259,8 +257,6 @@ ROSDATA VK_TO_WCHARS1 keypad_numbers[] = {
   { VK_NUMPAD7, 0, {'7'} },
   { VK_NUMPAD8, 0, {'8'} },
   { VK_NUMPAD9, 0, {'9'} },
-  { VK_DECIMAL, 0, {'.'} },
-  { VK_BACK,    0, {'\010'} },
   { 0,0 }
 };
 
@@ -286,7 +282,7 @@ ROSDATA VSC_LPWSTR key_names[] = {
   { 0x37, L"Num *" },
   { 0x38, L"Alt" },
   { 0x39, L"Space" },
-  { 0x3a, L"CAPLOK Lock" },
+  { 0x3a, L"Caps Lock" },
   { 0x3b, L"F1" },
   { 0x3c, L"F2" },
   { 0x3d, L"F3" },
@@ -349,10 +345,11 @@ ROSDATA VSC_LPWSTR extended_key_names[] = {
   { 0x51, L"Page Down" },
   { 0x52, L"Insert" },
   { 0x53, L"Delete" },
-  { 0x54, L"<LiberNT>" },
-  { 0x55, L"Help" },
-  { 0x56, L"Left Windows" },
-  { 0x5b, L"Right Windows" },
+  { 0x54, L"<00>" },
+  { 0x56, L"Help" },
+  { 0x5b, L"Left Windows" },
+  { 0x5c, L"Right Windows" },
+  { 0x5d, L"Application" },
   { 0, NULL },
 };
 
