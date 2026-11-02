@@ -16,6 +16,19 @@
 #define CFG_CALL_TARGET_VALID 0x00000001
 #endif
 
+#if defined(_M_IX86) || defined(_M_AMD64)
+#define CFG_INTERIOR_OFFSET 5
+#else
+#define CFG_INTERIOR_OFFSET sizeof(DWORD)
+#endif
+
+typedef enum _CFG_IMAGE_PATCH
+{
+    CfgPatchNoGuardTable,
+    CfgPatchLegacyDirectorySize,
+    CfgPatchNoDispatchSlot
+} CFG_IMAGE_PATCH;
+
 typedef struct _CFG_CALL_TARGET_INFO_LOCAL
 {
     ULONG_PTR Offset;
@@ -189,21 +202,23 @@ RvaToOffset(const IMAGE_NT_HEADERS *NtHeaders, DWORD Rva)
 }
 
 static PFN_CFG_TARGET
-LoadTargetWithoutGuardTable(const char *ExportName)
+LoadPatchedGuardedTarget(const char *ExportName, CFG_IMAGE_PATCH Patch)
 {
     IMAGE_LOAD_CONFIG_DIRECTORY *LoadConfig;
-    const IMAGE_DATA_DIRECTORY *Directory;
+    IMAGE_DATA_DIRECTORY *Directory;
     IMAGE_NT_HEADERS *NtHeaders;
     WCHAR Source[MAX_PATH], Copy[MAX_PATH];
+    static const WCHAR * const CopyNames[] = {L"cfg_notable.dll", L"cfg_dirsize.dll", L"cfg_nodispatch.dll"};
+    const WCHAR *CopyName = CopyNames[Patch];
     HANDLE File;
     HMODULE Module;
     BYTE *Image;
     DWORD Size, Done, Offset;
     BOOL Written;
 
-    if (!GetSiblingPath(Source, L"cfg_guarded.dll") || !GetTempPathW(MAX_PATH, Copy) || lstrlenW(Copy) + 16 >= MAX_PATH)
+    if (!GetSiblingPath(Source, L"cfg_guarded.dll") || !GetTempPathW(MAX_PATH, Copy) || lstrlenW(Copy) + lstrlenW(CopyName) >= MAX_PATH)
         return NULL;
-    lstrcatW(Copy, L"cfg_notable.dll");
+    lstrcatW(Copy, CopyName);
     File = CreateFileW(Source, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (File == INVALID_HANDLE_VALUE)
         return NULL;
@@ -222,9 +237,20 @@ LoadTargetWithoutGuardTable(const char *ExportName)
     if (Written)
     {
         LoadConfig = (IMAGE_LOAD_CONFIG_DIRECTORY *)(Image + Offset);
-        LoadConfig->GuardFlags &= ~(IMAGE_GUARD_CF_FUNCTION_TABLE_PRESENT | IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_MASK);
-        LoadConfig->GuardCFFunctionTable = 0;
-        LoadConfig->GuardCFFunctionCount = 0;
+        if (Patch == CfgPatchNoGuardTable)
+        {
+            LoadConfig->GuardFlags &= ~(IMAGE_GUARD_CF_FUNCTION_TABLE_PRESENT | IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_MASK);
+            LoadConfig->GuardCFFunctionTable = 0;
+            LoadConfig->GuardCFFunctionCount = 0;
+        }
+        else if (Patch == CfgPatchLegacyDirectorySize)
+        {
+            Directory->Size = 64;
+        }
+        else
+        {
+            LoadConfig->GuardCFDispatchFunctionPointer = 0;
+        }
 
         File = CreateFileW(Copy, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
         Written = File != INVALID_HANDLE_VALUE;
@@ -240,7 +266,7 @@ LoadTargetWithoutGuardTable(const char *ExportName)
         return NULL;
 
     Module = LoadLibraryW(Copy);
-    printf("CFGCHILD|notable|module=%p|error=%lu\n", Module, Module ? 0 : GetLastError());
+    printf("CFGCHILD|%ls|module=%p|error=%lu\n", CopyName, Module, Module ? 0 : GetLastError());
     fflush(stdout);
     if (Module == NULL)
         return NULL;
@@ -256,6 +282,13 @@ CreateDynamicTarget(DWORD Protection, SIZE_T Offset, PVOID *AllocationBase)
         0x52808fe0, /* mov w0, #0x47f */
         0xd65f03c0  /* ret */
     };
+#else
+    static const BYTE Code[] =
+    {
+        0xb8, 0x7f, 0x04, 0x00, 0x00, /* mov eax, 0x47f */
+        0xc3                          /* ret */
+    };
+#endif
     PVOID Address, Target;
     DWORD OldProtection;
 
@@ -275,10 +308,28 @@ CreateDynamicTarget(DWORD Protection, SIZE_T Offset, PVOID *AllocationBase)
     if (AllocationBase != NULL)
         *AllocationBase = Address;
     return Target;
-#else
-    UNREFERENCED_PARAMETER(Protection);
-    return NULL;
-#endif
+}
+
+static DWORD
+TestSectionTargets(VOID)
+{
+    static const char * const Exports[] =
+    {
+        "CfgGuardedSection1",
+        "CfgGuardedSection2",
+        "CfgGuardedSection3",
+        "CfgGuardedSection4"
+    };
+    PFN_CFG_TARGET Target;
+    ULONG Index;
+
+    for (Index = 0; Index < ARRAYSIZE(Exports); ++Index)
+    {
+        Target = LoadTarget(L"cfg_guarded.dll", Exports[Index]);
+        if (Target == NULL || CallIndirect(Target) != 0x481 + Index)
+            return 0x52;
+    }
+    return 0;
 }
 
 int
@@ -311,18 +362,36 @@ main(int argc, char **argv)
         return Target != NULL && CallIndirect(Target) == 0x47f ? 0 : 0x42;
     }
 
+    if (!strcmp(argv[1], "valid-sections"))
+        return TestSectionTargets();
+
     if (!strcmp(argv[1], "notable-guarded"))
     {
-        Target = LoadTargetWithoutGuardTable("CfgGuardedTarget");
+        Target = LoadPatchedGuardedTarget("CfgGuardedTarget", CfgPatchNoGuardTable);
         return Target != NULL && CallIndirect(Target) == 0x47f ? 0 : 0x50;
     }
 
     if (!strcmp(argv[1], "notable-interior"))
     {
-        Target = LoadTargetWithoutGuardTable("CfgGuardedTarget");
+        Target = LoadPatchedGuardedTarget("CfgGuardedTarget", CfgPatchNoGuardTable);
         if (Target == NULL)
             return 0x51;
-        CallIndirect((PFN_CFG_TARGET)((BYTE *)Target + sizeof(DWORD)));
+        CallIndirect((PFN_CFG_TARGET)((BYTE *)Target + CFG_INTERIOR_OFFSET));
+        return 0;
+    }
+
+    if (!strcmp(argv[1], "nodispatch-guarded"))
+    {
+        Target = LoadPatchedGuardedTarget("CfgGuardedTarget", CfgPatchNoDispatchSlot);
+        return Target != NULL && CallIndirect(Target) == 0x47f ? 0 : 0x54;
+    }
+
+    if (!strcmp(argv[1], "dirsize-interior"))
+    {
+        Target = LoadPatchedGuardedTarget("CfgGuardedTarget", CfgPatchLegacyDirectorySize);
+        if (Target == NULL)
+            return 0x53;
+        CallIndirect((PFN_CFG_TARGET)((BYTE *)Target + CFG_INTERIOR_OFFSET));
         return 0;
     }
 
@@ -331,7 +400,7 @@ main(int argc, char **argv)
         Target = LoadTarget(L"cfg_plain.dll", "CfgPlainTarget");
         if (Target == NULL)
             return 0x43;
-        CallIndirect((PFN_CFG_TARGET)((BYTE *)Target + sizeof(DWORD)));
+        CallIndirect((PFN_CFG_TARGET)((BYTE *)Target + CFG_INTERIOR_OFFSET));
         return 0;
     }
 
@@ -383,13 +452,13 @@ main(int argc, char **argv)
                                  1,
                                  &TargetInfo);
         Error = GetLastError();
-        printf("CFGCHILD|settargets|result=%u|error=%lu|base=%p|size=%Iu|offset=%Ix|flags=%Ix\n",
+        printf("CFGCHILD|settargets|result=%d|error=%lu|base=%p|size=%Iu|offset=%Ix|flags=%Ix\n",
                Result,
                Error,
                MemoryInformation.BaseAddress,
-               MemoryInformation.RegionSize,
-               TargetInfo.Offset,
-               TargetInfo.Flags);
+               (size_t)MemoryInformation.RegionSize,
+               (size_t)TargetInfo.Offset,
+               (size_t)TargetInfo.Flags);
         fflush(stdout);
         if (!Result)
             return 0x4d;

@@ -67,10 +67,13 @@ endif()
 list(APPEND SOURCE wow64.c)
 
 if(ARCH STREQUAL "i386")
-    list(APPEND ASM_SOURCE dispatch/i386/dispatch.S)
+    list(APPEND ASM_SOURCE
+        dispatch/i386/dispatch.S
+        ldr/i386/guardcheck.S)
 elseif(ARCH STREQUAL "amd64")
     list(APPEND ASM_SOURCE
         dispatch/amd64/dispatch.S
+        ldr/amd64/guardcheck.S
         compat/amd64/msys2.S)
 elseif(ARCH STREQUAL "arm")
     list(APPEND ASM_SOURCE dispatch/arm/stubs_asm.s)
@@ -99,6 +102,16 @@ if(ARCH STREQUAL "riscv64")
     list(APPEND SOURCE ldr/riscv64/emulation.c)
 else()
     list(APPEND SOURCE ldr/noemulation.c)
+endif()
+
+if(ARCH STREQUAL "i386")
+    list(APPEND SOURCE ldr/i386/guard.c)
+elseif(ARCH STREQUAL "amd64")
+    list(APPEND SOURCE ldr/amd64/guard.c)
+elseif(ARCH STREQUAL "arm64")
+    list(APPEND SOURCE ldr/arm64/guard.c)
+else()
+    list(APPEND SOURCE ldr/noguard.c)
 endif()
 
 if(ARCH STREQUAL "arm64")

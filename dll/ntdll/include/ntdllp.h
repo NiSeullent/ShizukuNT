@@ -625,6 +625,11 @@ VOID
 LdrpArchDetachThread(VOID);
 
 BOOLEAN
+LdrpArchGetGuardTargets(
+    _Out_ PVOID *CheckTarget,
+    _Out_ PVOID *DispatchTarget);
+
+BOOLEAN
 RtlpArchQueryPerformanceCounter(
     _Out_ PLARGE_INTEGER Counter);
 

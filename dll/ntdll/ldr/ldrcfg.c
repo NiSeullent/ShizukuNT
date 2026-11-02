@@ -9,8 +9,6 @@
 
 #include <ntdll.h>
 
-#if defined(_M_ARM64)
-
 static RTL_SRWLOCK LdrpGuardDynamicLock = RTL_SRWLOCK_INIT;
 static LIST_ENTRY LdrpGuardDynamicRanges = {&LdrpGuardDynamicRanges, &LdrpGuardDynamicRanges};
 static volatile LONG LdrpGuardDynamicRangesPresent;
@@ -172,6 +170,3 @@ LdrpGuardDynamicTargetIsExecutable(
     RtlReleaseSRWLockShared(&LdrpGuardDynamicLock);
     return Valid;
 }
-
-
-#endif
